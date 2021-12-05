@@ -50,7 +50,7 @@ protected:
     void onEnd();
     void update();
     void spawnPlayer();
-    void spawnSword(std::shared_ptr<Entity> entity);
+    void spawnWeapon(std::shared_ptr<Entity> entity);
     Vec2 getPosition(int sx, int sy, int tx, int ty) const;
     
     void sMovement();
@@ -60,6 +60,8 @@ protected:
     void sCollision();
     bool sAddItem(std::shared_ptr<Entity> entity, std::shared_ptr<Item> item);
     void sUseItem(std::shared_ptr<Entity> entity, std::shared_ptr<Item> item);
+    void sSwapWeapon();
+    void sTestValue();
     void sCamera();
     
 

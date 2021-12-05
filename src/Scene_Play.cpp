@@ -42,12 +42,12 @@ void Scene_Play::init(const std::string& levelPath)
     registerAction(sf::Keyboard::C, "TOGGLE_COLLISION");    // Toggle drawing (C)ollision Boxes
     registerAction(sf::Keyboard::W, "JUMP");                // Jump
     registerAction(sf::Keyboard::A, "MOVE_LEFT");           // Move Left
+    registerAction(sf::Keyboard::D, "MOVE_RIGHT");          // Move Right    
     
-    //registerAction(sf::Keyboard::S, "MOVE_DOWN");           // Move down
-    
-    registerAction(sf::Keyboard::D, "MOVE_RIGHT");          // Move Right
     registerAction(sf::Keyboard::Space, "ATTACK");          // Attack
-    registerAction(sf::Keyboard::I, "ITEM");                // Use Health Potion From Inventory (TEMP)
+    registerAction(sf::Keyboard::I, "ITEM");                // Use Item From Inventory (TEMP)
+    registerAction(sf::Keyboard::Tab, "SWAP");              // Swap Currently Equipped Weapon
+    registerAction(sf::Keyboard::V, "TEST");                // For testing purposes, prints a value to console.
 
     std::srand(static_cast<unsigned int>(std::time(NULL)));
 }
@@ -62,8 +62,11 @@ void Scene_Play::loadLevel(const std::string& filename)
 
     int count = 1;
 
+
+
     while (fin >> text)
-    { 
+    {
+        std::cout << text << "\n";
 
         if (text == "Player")
         {
@@ -100,7 +103,7 @@ void Scene_Play::loadLevel(const std::string& filename)
             int blockM;
 
             std::string AI = "";
-            
+
             fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV >> AI;
 
             if (AI == "Patrol")
@@ -201,8 +204,51 @@ void Scene_Play::loadLevel(const std::string& filename)
                 npc->addComponent<CGravity>(gravity);
             }
         }
+
+        if (text == "Item")
+        {
+            std::string animationName = "";
+            int roomX;
+            int roomY;
+            int tileX;
+            int tileY;
+            int blockV;
+            int blockM;
+            std::string itemName = "";
+
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV >> itemName;
+
+            auto item = m_entityManager.addEntity("item");
+            item->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+            item->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            item->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
+            item->addComponent<CInventory>(1, 0);
+
+            std::cout << itemName << std::endl;
+
+            if (itemName == "HP")
+            {
+                auto potion = std::shared_ptr<HealthPotion>(new HealthPotion());
+                sAddItem(item, potion);
+                std::cout << potion->itemID << "\n";
+                std::cout << potion->tag << "\n";
+            }
+            else if (itemName == "IP")
+            {
+                auto potion = std::shared_ptr<InvulnPotion>(new InvulnPotion());
+                sAddItem(item, potion);
+            }
+            else if (itemName == "SP")
+            {
+                auto potion = std::shared_ptr<StrengthPotion>(new StrengthPotion());
+                sAddItem(item, potion);
+            }
+            else
+            {
+                std::cout << "Invalid item name from file!\n";
+            }
+        }
     }
-                                      
     
     // Load the level file and put all entities in the manager
     // Use the getPosition() function below to convert room-tile coords to game world coords
@@ -239,6 +285,9 @@ void Scene_Play::spawnPlayer()
     m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
     m_player->addComponent<CState>();
     m_player->addComponent<CInventory>();
+    m_player->addComponent<CDamage>();
+    m_player->addComponent<CBuffed>();
+    m_player->addComponent<CWeapons>();
 
 
 
@@ -247,10 +296,10 @@ void Scene_Play::spawnPlayer()
     // Those parameters should be stored in the m_playerConfig variable
 }
 
-void Scene_Play::spawnSword(std::shared_ptr<Entity> entity)
+void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
 {
     
-    // Implement the spawning of the sword, which:
+    // Implement the spawning of the weapon, which:
     // - should be given the appropriate lifespan
     // - should spawn at the appropriate location based on player's facing direction
     // - be given a damage value of 1
@@ -261,55 +310,48 @@ void Scene_Play::spawnSword(std::shared_ptr<Entity> entity)
 
     auto& pState = m_player->getComponent<CState>();
 
+    auto& pWeapon = m_player->getComponent<CWeapons>().getWeapon();
+
     if (entity->getComponent<CInput>().attack == false)
     {
-        Vec2 swordPos = entity->getComponent<CTransform>().pos;
+        Vec2 weaponPos = entity->getComponent<CTransform>().pos;
 
 
         Vec2 offset = Vec2(64.0f, 64.0f);
 
-        auto sword = m_entityManager.addEntity("sword");
-        sword->addComponent<CTransform>(swordPos);
-        sword->addComponent<CAnimation>(m_game->assets().getAnimation("SwordRight"), true);
-
-        
-        if (pTransform.facing.x < 0.0f)
-        {
-            sword->getComponent<CTransform>().scale.x = -1.0f;
-            swordPos.x += -1 * offset.x;
-        }
-        else
-        {
-            swordPos.x += offset.x;
-        }
-
-        if (abs(pTransform.facing.y) > 0.0f)
-        {
-            sword->addComponent<CAnimation>(m_game->assets().getAnimation("SwordUp"), true);
-
-            if (pTransform.facing.y < 0.0f)
-            {
-                swordPos.y -= offset.y;
-                swordPos.x = pTransform.pos.x;
-            }
-            else
-            {
-                sword->getComponent<CTransform>().scale.y = -1.0f;
-                swordPos.y += offset.y;
-                swordPos.x = pTransform.pos.x;
-            }
-        }
-
-        sword->getComponent<CTransform>().pos = swordPos;
-        sword->addComponent<CBoundingBox>(sword->getComponent<CAnimation>().animation.getSize());
-        sword->addComponent<CLifeSpan>(10, m_currentFrame);
-        sword->addComponent<CDamage>();
+        auto weapon = m_entityManager.addEntity("weapon");
+        weapon->addComponent<CTransform>(weaponPos);
+        weapon->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
+        weapon->addComponent<CBoundingBox>(weapon->getComponent<CAnimation>().animation.getSize());
+        weapon->addComponent<CLifeSpan>(10, m_currentFrame);
+        weapon->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier);
     }
     
     m_game->playSound("Slash");
 
     pState.state = "attacking";
+}
 
+void Scene_Play::sSwapWeapon()
+{
+    auto& pWeapon = m_player->getComponent<CWeapons>();
+
+    if ((pWeapon.selected + 1) < pWeapon.unlocked.size())
+        if (pWeapon.unlocked[pWeapon.selected + 1] == true)
+        {
+            pWeapon.selected += 1;
+        }
+        else
+            pWeapon.selected = 0;
+    else
+        pWeapon.selected = 0;
+}
+
+void Scene_Play::sTestValue()
+{
+    auto& testVal = m_player->getComponent<CWeapons>().getWeapon().animationName;
+
+    std::cout << testVal << std::endl;
 }
 
 void Scene_Play::update()
@@ -487,10 +529,11 @@ void Scene_Play::sDoAction(const Action& action)
         else if (action.name() == "TOGGLE_COLLISION") { m_drawCollision = !m_drawCollision; }
         else if (action.name() == "JUMP") { m_player->getComponent<CInput>().up = true; }
         else if (action.name() == "MOVE_LEFT") { m_player->getComponent<CInput>().left = true; }
-        //else if (action.name() == "MOVE_DOWN") { m_player->getComponent<CInput>().down = true; }
         else if (action.name() == "MOVE_RIGHT") { m_player->getComponent<CInput>().right = true; }
-        else if (action.name() == "ATTACK") { spawnSword(m_player);  m_player->getComponent<CInput>().attack = true; }
-        else if (action.name() == "ITEM") { auto healthPotion = std::shared_ptr<HealthPotion>(new HealthPotion()); sUseItem(m_player, healthPotion); }
+        else if (action.name() == "ATTACK") { spawnWeapon(m_player);  m_player->getComponent<CInput>().attack = true; }
+        else if (action.name() == "ITEM") { sUseItem(m_player, m_player->getComponent<CInventory>().items[0]); } //Uses the first item in the player's inventory
+        else if (action.name() == "SWAP") { sSwapWeapon(); }
+        else if (action.name() == "TEST") { sTestValue(); }
     }
     else if (action.type() == "END")
     {
@@ -682,7 +725,7 @@ void Scene_Play::sStatus()
             //when lifespan reaches 0, destroy the entity
             else
             {
-                if (e->tag() == "sword")
+                if (e->tag() == "weapon")
                 {
                     m_player->getComponent<CInput>().attack = false;
                 }
@@ -701,6 +744,19 @@ void Scene_Play::sStatus()
             else
             {
                 e->removeComponent<CInvincibility>();
+            }
+        }
+
+        if (e->hasComponent<CBuffed>())
+        {
+            if (e->getComponent<CBuffed>().duration > 0)
+            {
+                e->getComponent<CBuffed>().duration--;
+            }
+
+            else
+            {
+                e->getComponent<CBuffed>().multiplier = 1;
             }
         }
 
@@ -742,9 +798,9 @@ void Scene_Play::sCollision()
     {
         for (auto b : m_entityManager.getEntities())
         {
+            /*
             if (e->getComponent<CAnimation>().animation.getName() == "Heart" && Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && b->tag() == "player")
             {
-                
                 std::cout << "Inventory Before: \n";
                 for (int i = 0; i < m_player->getComponent<CInventory>().items.size(); i++)
                 {
@@ -768,9 +824,8 @@ void Scene_Play::sCollision()
                     std::cout << m_player->getComponent<CInventory>().items[i] << std::endl;
                 }
                 std::cout << std::endl;
-                
-
             }
+            */
 
             if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile")
             { 
@@ -822,10 +877,23 @@ void Scene_Play::sCollision()
         }
     }
 
-    /*
+    for (auto i : m_entityManager.getEntities("item"))
+    {
+        if (Physics::GetOverlap(i, m_player).x > 0 && Physics::GetOverlap(i, m_player).y > 0)
+        {
+            bool notFull = sAddItem(m_player, i->getComponent<CInventory>().items[0]);
+
+            if (notFull == true)
+            {
+                i->destroy();
+                m_game->playSound("GetItem");
+            }
+        }
+    }
+
     for (auto e : m_entityManager.getEntities("npc"))
     {
-        for (auto b : m_entityManager.getEntities("sword"))
+        for (auto b : m_entityManager.getEntities("weapon"))
         {
 
             if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>())
@@ -852,41 +920,10 @@ void Scene_Play::sCollision()
 
                 m_game->playSound("LinkHurt");
             }
-
         }
     }
+    /*
 
-    for (auto e : m_entityManager.getEntities("tile"))
-    {
-
-        for (auto b : m_entityManager.getEntities("npc"))
-        {
-            if (e->getComponent<CBoundingBox>().blockMove == true)
-            {
-                doCollide(e, b);
-            }
-        }
-        for (auto b : m_entityManager.getEntities("player"))
-        {
-            if (e->getComponent<CBoundingBox>().blockMove == true)
-            {
-                doCollide(e, b);
-            }
-
-            if (e->getComponent<CAnimation>().animation.getName() == "Black" && Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>())
-            {
-                int target = rand() % BlackTiles.size();
-                while (BlackTiles[target] == e->getComponent<CTransform>().pos)
-                {
-                    target = rand() % BlackTiles.size();
-                }
-
-                b->getComponent<CTransform>().pos = BlackTiles[target] + Vec2(0.0f, +96.0f);
-            }
-
-            
-        }
-    }
     */
 }
 
@@ -938,7 +975,10 @@ bool Scene_Play::sAddItem(std::shared_ptr<Entity> entity, std::shared_ptr<Item> 
             return true;
         }
     }
-    return false;
+    else
+    {
+        return false;
+    }
 }
 
 //Uses an item in the entity's inventory.
@@ -950,8 +990,10 @@ void Scene_Play::sUseItem(std::shared_ptr<Entity> entity, std::shared_ptr<Item> 
         {
             if (entity->getComponent<CInventory>().items[i]->itemID == item->itemID)
             {
+                std::cout << "Used Item: " << entity->getComponent<CInventory>().items[i]->itemID << "\n";
+                std::cout << "Used item: " << entity->getComponent<CInventory>().items[i]->tag << std::endl;
                 item->use(entity);
-                entity->getComponent<CInventory>().items.pop_back();
+                entity->getComponent<CInventory>().items.erase(entity->getComponent<CInventory>().items.begin() + i);
                 entity->getComponent<CInventory>().currentSize--;
             }
         }
@@ -967,13 +1009,14 @@ void Scene_Play::sAnimation()
 {
     
     // Implement player facing direction animation
-    // Implement sword animation based on player facing
-    //    The sword should move if the player changes direction mid swing
+    // Implement weapon animation based on player facing
+    //    The weapon should move if the player changes direction mid swing
     // Implement destruction of entities with non-repeating finished animations
 
     auto& pTransform = m_player->getComponent<CTransform>();
     auto& pState = m_player->getComponent<CState>();
     auto& pInput = m_player->getComponent<CInput>();
+    auto& pWeapon = m_player->getComponent<CWeapons>().getWeapon();
     
     // sets the animation of the player based on its CState component
     if (m_player->getComponent<CState>().state == "running" && m_player->getComponent<CAnimation>().animation.getName() != "RunRight")
@@ -1044,7 +1087,7 @@ void Scene_Play::sAnimation()
     }
     */
 
-    for (auto& sword : m_entityManager.getEntities("sword"))
+    for (auto& sword : m_entityManager.getEntities("weapon"))
     {
         Vec2 swordPos = pTransform.pos;
 
@@ -1052,7 +1095,7 @@ void Scene_Play::sAnimation()
 
         if (pTransform.facing.x < 0.0f)
         {
-            sword->addComponent<CAnimation>(m_game->assets().getAnimation("SwordRight"), true);
+            sword->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
             sword->getComponent<CTransform>().scale.x = -1.0f;
             swordPos.x += -1 * offset.x;
 
@@ -1063,7 +1106,7 @@ void Scene_Play::sAnimation()
         }
         else
         {
-            sword->addComponent<CAnimation>(m_game->assets().getAnimation("SwordRight"), true);
+            sword->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
             sword->getComponent<CTransform>().scale.x = 1.0f;
             swordPos.x += offset.x;
 

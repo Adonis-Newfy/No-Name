@@ -19,8 +19,8 @@ void InvulnPotion::use(std::shared_ptr<Entity> entity)
 
 void StrengthPotion::use(std::shared_ptr<Entity> entity)
 {
-	if (entity->hasComponent<CDamage>())
+	if (entity->hasComponent<CBuffed>())
 	{
-		entity->getComponent<CDamage>().damage = 2;
+		entity->addComponent<CBuffed>(2, 600);
 	}
 }

@@ -26,7 +26,7 @@ void GameEngine::init(const std::string & path)
 {
     m_assets.loadFromFile(path);
 
-    m_window.create(sf::VideoMode(1280, 768), "Definitely Not Zelda");
+    m_window.create(sf::VideoMode(1280, 768), "No Name");
     m_window.setFramerateLimit(60);
 
     changeScene("MENU", std::make_shared<Scene_Menu>(this));

@@ -18,6 +18,7 @@
 #include "Animation.h"
 #include "Assets.h"
 #include "Items.h"
+#include "Weapons.h"
 #include "Common.h"
 
 class Item;
@@ -171,7 +172,64 @@ public:
     CInventory(size_t s, size_t c) : maxSize(s), currentSize(c) {}
 };
 
+class CWeapons : public Component
+{
+public:
+    size_t selected = 0;
+    std::vector<Weapon> weapons;
+    std::vector<bool> unlocked;
 
+    CWeapons() 
+    {
+        Basic basic;
+        Warrior warrior;
+        Ranger ranger;
+        Mage mage;
+
+        weapons.push_back(basic);           // 0
+        weapons.push_back(warrior);         // 1
+        weapons.push_back(ranger);          // 2
+        weapons.push_back(mage);            // 3
+
+        unlocked.push_back(true);
+
+        for (int i = 1; i < 4; i++)
+        {
+            unlocked.push_back(true);
+        }
+    }
+
+    void selectWeapon(int i)
+    {
+        if (unlocked[i] == true)
+        {
+            selected = i;
+        }
+    }
+
+    void unlockWeapon(int i)
+    {
+        if (i < weapons.size())
+        {
+            unlocked[i] = true;
+        }
+    }
+
+    Weapon getWeapon()
+    {
+        return weapons[selected];
+    }
+};
+
+class CBuffed : public Component
+{
+public:
+    int multiplier = 1;
+    int duration = 0;
+    CBuffed() {}
+    CBuffed(int m, int duration)
+        : multiplier(m), duration(duration) {}
+};
                                       
 // Copyright (C) David Churchill - All Rights Reserved
 // COMP4300 - 2021FALL - Assignment 4
