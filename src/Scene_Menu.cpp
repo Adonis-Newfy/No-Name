@@ -16,6 +16,7 @@
 #include "Scene_Menu.h"
 #include "Scene_Play.h"
 #include "Scene_Levels.h"
+#include "Scene_Levels_Editor.h"
 #include "Common.h"
 #include "Assets.h"
 #include "GameEngine.h"
@@ -69,7 +70,7 @@ void Scene_Menu::sDoAction(const Action& action)
         {
             if (m_menuStrings[m_selectedMenuIndex] == "Play")
             {
-                m_game->changeScene("ZELDA", std::make_shared<Scene_Levels>(m_game));
+                m_game->changeScene("LEVELS", std::make_shared<Scene_Levels>(m_game));
 
             }
 
@@ -80,7 +81,7 @@ void Scene_Menu::sDoAction(const Action& action)
 
             if (m_menuStrings[m_selectedMenuIndex] == "Level Editor")
             {
-                
+                m_game->changeScene("EDITOR_SELECT", std::make_shared<Scene_Levels_Editor>(m_game));
             }
 
             if (m_menuStrings[m_selectedMenuIndex] == "Quit")

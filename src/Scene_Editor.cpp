@@ -210,6 +210,9 @@ void Scene_Editor::loadLevel(const std::string& filename)
         }
     }
 
+    m_player = m_entityManager.addEntity("player");
+    m_player->addComponent<CTransform>(Vec2(m_playerConfig.X, m_playerConfig.Y));
+
     // Load the level file and put all entities in the manager
     // Use the getPosition() function below to convert room-tile coords to game world coords
 }
@@ -240,18 +243,221 @@ void Scene_Editor::onEnd()
 
 void Scene_Editor::update()
 {
+    while (!m_paused)
+    {
+        sCamera();
+        sMovement();
+        sRender();
+    }
 }
 
 void Scene_Editor::sMovement()
 {
+    Vec2 playerVelocity(0, 0);
+
+    if (m_player->getComponent<CInput>().up)
+    {
+        playerVelocity.y -= m_playerConfig.SPEED;
+    }
+    if (m_player->getComponent<CInput>().down)
+    {
+        playerVelocity.y += m_playerConfig.SPEED;
+    }
+    if (m_player->getComponent<CInput>().right)
+    {
+        playerVelocity.x += m_playerConfig.SPEED;
+    }
+    if (m_player->getComponent<CInput>().left)
+    {
+        playerVelocity.x -= m_playerConfig.SPEED;
+    }
+
+    // movement speed update
+
+    m_player->getComponent<CTransform>().velocity = playerVelocity;
+
+    for (auto e : m_entityManager.getEntities())
+    {
+        e->getComponent<CTransform>().pos += e->getComponent<CTransform>().velocity;
+    }
 }
 
 void Scene_Editor::sCamera()
 {
+
+    // Implement camera view logic
+
+    // get the current view, which we will modify in the if-statement below
+    sf::View view = m_game->window().getView();
+
+    auto& pPos = m_player->getComponent<CTransform>().pos;
+
+    if (m_follow)
+    {
+        view.setCenter(pPos.x, pPos.y);
+    }
+    else
+    {
+        // calcluate view for room-based camera
+        int gridX = (pPos.x / 1280);
+        int gridY = (pPos.y / 768);
+
+        if (pPos.x < 0)
+        {
+            gridX = gridX - 1;
+        }
+
+        if (pPos.y < 0)
+        {
+            gridY = gridY - 1;
+        }
+
+        float viewCenterX = (gridX * 1280.0f) + (1280.0f / 2);
+        float viewCenterY = (gridY * 768.0f) + (768.0f / 2);
+
+        view.setCenter(viewCenterX, viewCenterY);
+
+    }
+
+    // then set the window view
+    m_game->window().setView(view);
 }
 
 void Scene_Editor::sRender()
 {
+    // RENDERING DONE FOR YOU
+
+    m_game->window().clear(sf::Color(255, 192, 122));
+    sf::RectangleShape tick({ 1.0f, 6.0f });
+    tick.setFillColor(sf::Color::Black);
+
+    // draw all Entity textures / animations
+    if (m_drawTextures)
+    {
+        // draw entity animations
+        for (auto e : m_entityManager.getEntities())
+        {
+            auto& transform = e->getComponent<CTransform>();
+            sf::Color c = sf::Color::White;
+            if (e->hasComponent<CInvincibility>())
+            {
+                c = sf::Color(255, 255, 255, 128);
+            }
+
+            if (e->hasComponent<CAnimation>())
+            {
+                auto& animation = e->getComponent<CAnimation>().animation;
+                animation.getSprite().setRotation(transform.angle);
+                animation.getSprite().setPosition(transform.pos.x, transform.pos.y);
+                animation.getSprite().setScale(transform.scale.x, transform.scale.y);
+                animation.getSprite().setColor(c);
+                m_game->window().draw(animation.getSprite());
+            }
+        }
+
+        // draw entity health bars
+        for (auto e : m_entityManager.getEntities())
+        {
+            auto& transform = e->getComponent<CTransform>();
+            if (e->hasComponent<CHealth>())
+            {
+                auto& h = e->getComponent<CHealth>();
+                Vec2 size(64, 6);
+                sf::RectangleShape rect({ size.x, size.y });
+                rect.setPosition(transform.pos.x - 32, transform.pos.y - 48);
+                rect.setFillColor(sf::Color(96, 96, 96));
+                rect.setOutlineColor(sf::Color::Black);
+                rect.setOutlineThickness(2);
+                m_game->window().draw(rect);
+
+                float ratio = (float)(h.current) / h.max;
+                size.x *= ratio;
+                rect.setSize({ size.x, size.y });
+                rect.setFillColor(sf::Color(255, 0, 0));
+                rect.setOutlineThickness(0);
+                m_game->window().draw(rect);
+
+                for (int i = 0; i < h.max; i++)
+                {
+                    tick.setPosition(rect.getPosition() + sf::Vector2f(i * 64 * 1 / h.max, 0));
+                    m_game->window().draw(tick);
+                }
+            }
+
+            if (e->hasComponent<CCooldown>())
+            {
+                if (e->getComponent<CCooldown>().ready != true)
+                {
+                    auto& c = e->getComponent<CCooldown>();
+                    Vec2 size(64, 6);
+                    sf::RectangleShape rect({ size.x, size.y });
+                    rect.setPosition(transform.pos.x - 32, transform.pos.y - 64);
+                    rect.setFillColor(sf::Color(96, 96, 96));
+                    rect.setOutlineColor(sf::Color::Black);
+                    rect.setOutlineThickness(2);
+                    m_game->window().draw(rect);
+
+                    float ratio = (float)(c.curTimer) / c.maxTimer;
+                    size.x *= ratio;
+                    rect.setSize({ size.x , size.y });
+                    rect.setFillColor(sf::Color(255, 255, 0));
+                    rect.setOutlineThickness(0);
+                    m_game->window().draw(rect);
+                }
+            }
+        }
+    }
+
+    // draw all Entity collision bounding boxes with a rectangleshape
+    if (m_drawCollision)
+    {
+        sf::CircleShape dot(4);
+        dot.setFillColor(sf::Color::Black);
+        for (auto e : m_entityManager.getEntities())
+        {
+            if (e->hasComponent<CBoundingBox>())
+            {
+                auto& box = e->getComponent<CBoundingBox>();
+                auto& transform = e->getComponent<CTransform>();
+                sf::RectangleShape rect;
+                rect.setSize(sf::Vector2f(box.size.x - 1, box.size.y - 1));
+                rect.setOrigin(sf::Vector2f(box.halfSize.x, box.halfSize.y));
+                rect.setPosition(transform.pos.x, transform.pos.y);
+                rect.setFillColor(sf::Color(0, 0, 0, 0));
+
+                if (box.blockMove && box.blockVision) { rect.setOutlineColor(sf::Color::Black); }
+                if (box.blockMove && !box.blockVision) { rect.setOutlineColor(sf::Color::Blue); }
+                if (!box.blockMove && box.blockVision) { rect.setOutlineColor(sf::Color::Red); }
+                if (!box.blockMove && !box.blockVision) { rect.setOutlineColor(sf::Color::White); }
+                rect.setOutlineThickness(1);
+                m_game->window().draw(rect);
+            }
+
+            if (e->hasComponent<CPatrol>())
+            {
+                auto& patrol = e->getComponent<CPatrol>().positions;
+                for (size_t p = 0; p < patrol.size(); p++)
+                {
+                    dot.setPosition(patrol[p].x, patrol[p].y);
+                    m_game->window().draw(dot);
+                }
+            }
+
+            if (e->hasComponent<CFollowPlayer>())
+            {
+                sf::VertexArray lines(sf::LinesStrip, 2);
+                lines[0].position.x = e->getComponent<CTransform>().pos.x;
+                lines[0].position.y = e->getComponent<CTransform>().pos.y;
+                lines[0].color = sf::Color::Black;
+                lines[1].position.x = m_player->getComponent<CTransform>().pos.x;
+                lines[1].position.y = m_player->getComponent<CTransform>().pos.y;
+                lines[1].color = sf::Color::Black;
+                m_game->window().draw(lines);
+                dot.setPosition(e->getComponent<CFollowPlayer>().home.x, e->getComponent<CFollowPlayer>().home.y);
+                m_game->window().draw(dot);
+            }
+        }
+    }
 }
 
 void Scene_Editor::sDoAction(const Action& action)
