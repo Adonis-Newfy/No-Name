@@ -15,6 +15,7 @@
                                       
 #include "Scene_Menu.h"
 #include "Scene_Play.h"
+#include "Scene_Levels.h"
 #include "Common.h"
 #include "Assets.h"
 #include "GameEngine.h"
@@ -35,17 +36,10 @@ void Scene_Menu::init()
     registerAction(sf::Keyboard::Escape, "QUIT");
 
     m_title = "No Name";
-    m_menuStrings.push_back("Entrance");
-    m_menuStrings.push_back("Depths B1");
-    m_menuStrings.push_back("Depths B2");
-    m_menuStrings.push_back("Final Boss");
-    m_menuStrings.push_back("Testing");
-                                      
-    m_levelPaths.push_back("level1.txt");
-    m_levelPaths.push_back("level2.txt");
-    m_levelPaths.push_back("level3.txt");
-    m_levelPaths.push_back("level4.txt");
-    m_levelPaths.push_back("level5.txt");
+    m_menuStrings.push_back("Play");
+    m_menuStrings.push_back("Options");
+    m_menuStrings.push_back("Level Editor");
+    m_menuStrings.push_back("Quit");
 
     m_menuText.setFont(m_game->assets().getFont("Megaman"));
     m_menuText.setCharacterSize(64);
@@ -73,8 +67,27 @@ void Scene_Menu::sDoAction(const Action& action)
         }
         else if (action.name() == "ZELDA")
         {
-            m_game->changeScene("ZELDA", std::make_shared<Scene_Play>(m_game, m_levelPaths[m_selectedMenuIndex]));
-            m_game->assets().getSound("MusicTitle").stop();
+            if (m_menuStrings[m_selectedMenuIndex] == "Play")
+            {
+                m_game->changeScene("ZELDA", std::make_shared<Scene_Levels>(m_game));
+
+            }
+
+            if (m_menuStrings[m_selectedMenuIndex] == "Options")
+            {
+                
+            }
+
+            if (m_menuStrings[m_selectedMenuIndex] == "Level Editor")
+            {
+                
+            }
+
+            if (m_menuStrings[m_selectedMenuIndex] == "Quit")
+            {
+                onEnd();
+            }
+
         }
         else if (action.name() == "QUIT")
         {

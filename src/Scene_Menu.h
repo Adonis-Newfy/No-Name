@@ -30,7 +30,6 @@ protected:
                                       
     std::string                 m_title;
     std::vector<std::string>    m_menuStrings;
-    std::vector<std::string>    m_levelPaths;
     sf::Text                    m_menuText;
     size_t                      m_selectedMenuIndex = 0;
     

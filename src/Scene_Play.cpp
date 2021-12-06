@@ -338,7 +338,6 @@ void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
             m_player->addComponent<CCooldown>(pWeapon.delay);
 
             m_game->playSound("Slash");
-            pState.state = "attacking";
         }
         else if (pWeapon.ranged == true)
         {

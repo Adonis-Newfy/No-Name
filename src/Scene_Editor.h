@@ -38,10 +38,12 @@ protected:
     void sMovement();
     void sCamera();
 
+    Vec2 getPosition(int rx, int ry, int tx, int ty) const;
+
 
 public:
 
-    Scene_Editor(GameEngine * gameEngine = nullptr);
+    Scene_Editor(GameEngine* game, const std::string& levelPath);
 
     void sRender();
     void sDoAction(const Action& action);
