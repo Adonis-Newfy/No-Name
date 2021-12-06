@@ -230,6 +230,20 @@ public:
     CBuffed(int m, int duration)
         : multiplier(m), duration(duration) {}
 };
+
+class CCooldown : public Component
+{
+public:
+    bool ready = true;
+    int curTimer = 0;
+    int maxTimer = 0;
+
+    CCooldown() {}
+    CCooldown(int c) : curTimer(c), maxTimer(c)
+    {
+        ready = false;
+    }
+};
                                       
 // Copyright (C) David Churchill - All Rights Reserved
 // COMP4300 - 2021FALL - Assignment 4

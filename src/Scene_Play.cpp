@@ -21,6 +21,9 @@
 #include "Components.h"
 #include "Scene_Menu.h"
 
+int totalMoney = 0;
+int levelMoney = 0;
+
 Scene_Play::Scene_Play(GameEngine* game, const std::string& levelPath)
     : Scene(game)
     , m_levelPath(levelPath)
@@ -37,7 +40,7 @@ void Scene_Play::init(const std::string& levelPath)
 
     registerAction(sf::Keyboard::Escape, "QUIT");
     registerAction(sf::Keyboard::P, "PAUSE");
-    registerAction(sf::Keyboard::Y, "TOGGLE_FOLLOW");      // Toggle follow camera
+    registerAction(sf::Keyboard::Y, "TOGGLE_FOLLOW");       // Toggle follow camera
     registerAction(sf::Keyboard::T, "TOGGLE_TEXTURE");      // Toggle drawing (T)extures
     registerAction(sf::Keyboard::C, "TOGGLE_COLLISION");    // Toggle drawing (C)ollision Boxes
     registerAction(sf::Keyboard::W, "JUMP");                // Jump
@@ -256,6 +259,11 @@ void Scene_Play::loadLevel(const std::string& filename)
     spawnPlayer();
     m_game->playSound("MusicLevel");
 }
+
+void Scene_Play::saveLevel(const std::string& filename)
+{
+    std::ofstream file(filename);
+}
                                       
 Vec2 Scene_Play::getPosition(int rx, int ry, int tx, int ty) const
 {
@@ -288,10 +296,9 @@ void Scene_Play::spawnPlayer()
     m_player->addComponent<CDamage>();
     m_player->addComponent<CBuffed>();
     m_player->addComponent<CWeapons>();
+    m_player->addComponent<CCooldown>();
 
 
-
-    
     // Implement this function so that it uses the parameters input from the level file
     // Those parameters should be stored in the m_playerConfig variable
 }
@@ -312,24 +319,54 @@ void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
 
     auto& pWeapon = m_player->getComponent<CWeapons>().getWeapon();
 
-    if (entity->getComponent<CInput>().attack == false)
+    if (entity->getComponent<CInput>().attack == false && m_player->getComponent<CCooldown>().ready == true)
     {
         Vec2 weaponPos = entity->getComponent<CTransform>().pos;
 
 
         Vec2 offset = Vec2(64.0f, 64.0f);
 
-        auto weapon = m_entityManager.addEntity("weapon");
-        weapon->addComponent<CTransform>(weaponPos);
-        weapon->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
-        weapon->addComponent<CBoundingBox>(weapon->getComponent<CAnimation>().animation.getSize());
-        weapon->addComponent<CLifeSpan>(10, m_currentFrame);
-        weapon->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier);
-    }
-    
-    m_game->playSound("Slash");
+        if (pWeapon.ranged == false)
+        {
+            auto weapon = m_entityManager.addEntity("weapon");
+            weapon->addComponent<CTransform>(weaponPos);
+            weapon->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
+            weapon->addComponent<CBoundingBox>(weapon->getComponent<CAnimation>().animation.getSize());
+            weapon->addComponent<CLifeSpan>(10, m_currentFrame);
+            weapon->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier);
 
-    pState.state = "attacking";
+            m_player->addComponent<CCooldown>(pWeapon.delay);
+
+            m_game->playSound("Slash");
+            pState.state = "attacking";
+        }
+        else if (pWeapon.ranged == true)
+        {
+            Vec2 bulletPos = entity->getComponent<CTransform>().pos;
+
+            auto bullet = m_entityManager.addEntity("bullet");
+
+            bullet->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
+            bullet->addComponent<CTransform>(bulletPos);
+            bullet->addComponent<CBoundingBox>(bullet->getComponent<CAnimation>().animation.getSize());
+            bullet->addComponent<CLifeSpan>(60, m_currentFrame);
+            bullet->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier);
+
+
+            if (entity->getComponent<CTransform>().scale.x == 1)
+            {
+                bullet->getComponent<CTransform>().velocity.x = m_playerConfig.SPEED * 2;
+            }
+            else if (entity->getComponent<CTransform>().scale.x == -1)
+            {
+                bullet->getComponent<CTransform>().velocity.x = -m_playerConfig.SPEED * 2;
+            }
+
+            m_player->addComponent<CCooldown>(pWeapon.delay);
+        }
+
+    }
+  
 }
 
 void Scene_Play::sSwapWeapon()
@@ -349,9 +386,16 @@ void Scene_Play::sSwapWeapon()
 
 void Scene_Play::sTestValue()
 {
+    /*
     auto& testVal = m_player->getComponent<CWeapons>().getWeapon().animationName;
 
     std::cout << testVal << std::endl;
+    */
+
+
+    const std::string filepath = "test.txt";
+
+    saveLevel(filepath);
 }
 
 void Scene_Play::update()
@@ -369,7 +413,7 @@ void Scene_Play::update()
         sCollision();
         sAnimation();
         sCamera();
-
+        // sLighting();
         // add dim shader to screen for when paused
     }
     
@@ -530,7 +574,7 @@ void Scene_Play::sDoAction(const Action& action)
         else if (action.name() == "JUMP") { m_player->getComponent<CInput>().up = true; }
         else if (action.name() == "MOVE_LEFT") { m_player->getComponent<CInput>().left = true; }
         else if (action.name() == "MOVE_RIGHT") { m_player->getComponent<CInput>().right = true; }
-        else if (action.name() == "ATTACK") { spawnWeapon(m_player);  m_player->getComponent<CInput>().attack = true; }
+        else if (action.name() == "ATTACK") { spawnWeapon(m_player);  if (m_player->getComponent<CCooldown>().ready == true) m_player->getComponent<CInput>().attack = true; }
         else if (action.name() == "ITEM") { sUseItem(m_player, m_player->getComponent<CInventory>().items[0]); } //Uses the first item in the player's inventory
         else if (action.name() == "SWAP") { sSwapWeapon(); }
         else if (action.name() == "TEST") { sTestValue(); }
@@ -702,6 +746,97 @@ void Scene_Play::sAI()
     }
 }
 
+void Scene_Play::sLighting()
+{
+    std::vector<Vec2> visibilityPolygon;
+    auto& pTransform = m_player->getComponent<CTransform>();
+    sf::View view = m_game->window().getView();
+
+    Vec2 winP1 = Vec2(view.getCenter().x - (view.getSize().x / 2.0f), view.getCenter().y - (view.getSize().y / 2.0f)); // 0, 0
+    Vec2 winP2 = Vec2(view.getCenter().x + (view.getSize().x / 2.0f), view.getCenter().y - (view.getSize().y / 2.0f)); // 0, 1
+    Vec2 winP3 = Vec2(view.getCenter().x - (view.getSize().x / 2.0f), view.getCenter().y + (view.getSize().y / 2.0f)); // 1, 0
+    Vec2 winP4 = Vec2(view.getCenter().x + (view.getSize().x / 2.0f), view.getCenter().y + (view.getSize().y / 2.0f)); // 1, 1
+
+    for (auto& e : m_entityManager.getEntities("tile"))
+    {
+        //Generates 4 points of a tile, which will be targetted by the ray to render LOS
+        
+
+        Vec2 P1 = Vec2(e->getComponent<CTransform>().pos.x - e->getComponent<CBoundingBox>().halfSize.x, e->getComponent<CTransform>().pos.y - e->getComponent<CBoundingBox>().halfSize.y);
+        Vec2 P2 = Vec2(e->getComponent<CTransform>().pos.x + e->getComponent<CBoundingBox>().halfSize.x, e->getComponent<CTransform>().pos.y - e->getComponent<CBoundingBox>().halfSize.y);
+        Vec2 P3 = Vec2(e->getComponent<CTransform>().pos.x + e->getComponent<CBoundingBox>().halfSize.x, e->getComponent<CTransform>().pos.y + e->getComponent<CBoundingBox>().halfSize.y);
+        Vec2 P4 = Vec2(e->getComponent<CTransform>().pos.x - e->getComponent<CBoundingBox>().halfSize.x, e->getComponent<CTransform>().pos.y + e->getComponent<CBoundingBox>().halfSize.y);
+
+        Vec2 points[4] = { P1, P2, P3, P4 };
+        
+        for (auto& b : m_entityManager.getEntities("tile"))
+        {
+
+            for (int j = 0; j < 4; j++)
+            {
+                //If no intersection between player position & target point, extend the line by arbitrarily large value in length
+                if (Physics::EntityIntersect(pTransform.pos, points[j], b))
+                {
+                    /*
+                    *                     float cX = pTransform.pos.x - points[j].x;
+                    float cY = pTransform.pos.y - points[j].y;
+
+                    float cH = sqrtf(powf(cX, 2.0) + powf(cY, 2.0));
+
+                    float theta = atanf(cY / cX);
+
+                    float nX = cH * cosf(theta);
+                    float nY = cH * sinf(theta);
+
+                    Vec2 target = Vec2(nX + pTransform.pos.x, nY + pTransform.pos.y);
+
+                    //Then check collision between the target point, the arbitrarily large value, and the screen's bounding box positions
+                    */
+
+                    Vec2 B1 = Vec2(b->getComponent<CTransform>().pos.x - b->getComponent<CBoundingBox>().halfSize.x, b->getComponent<CTransform>().pos.y - b->getComponent<CBoundingBox>().halfSize.y);
+                    Vec2 B2 = Vec2(b->getComponent<CTransform>().pos.x + b->getComponent<CBoundingBox>().halfSize.x, b->getComponent<CTransform>().pos.y - b->getComponent<CBoundingBox>().halfSize.y);
+                    Vec2 B3 = Vec2(b->getComponent<CTransform>().pos.x + b->getComponent<CBoundingBox>().halfSize.x, b->getComponent<CTransform>().pos.y + b->getComponent<CBoundingBox>().halfSize.y);
+                    Vec2 B4 = Vec2(b->getComponent<CTransform>().pos.x - b->getComponent<CBoundingBox>().halfSize.x, b->getComponent<CTransform>().pos.y + b->getComponent<CBoundingBox>().halfSize.y);
+
+                    Intersect intersect;
+
+                    for (int i = 0; i < 4; i++)
+                    {
+                        intersect = Physics::LineIntersect(points[j], pTransform.pos, B1, B2);
+                        if (intersect.result == true)
+                        {
+                            visibilityPolygon.push_back(intersect.pos);
+                            break;
+                        }
+
+                        intersect = Physics::LineIntersect(points[j], pTransform.pos, B2, B3);
+                        if (intersect.result == true)
+                        {
+                            visibilityPolygon.push_back(intersect.pos);
+                            break;
+                        }
+
+                        intersect = Physics::LineIntersect(points[j], pTransform.pos, B3, B4);
+                        if (intersect.result == true)
+                        {
+                            visibilityPolygon.push_back(intersect.pos);
+                            break;
+                        }
+
+                        intersect = Physics::LineIntersect(points[j], pTransform.pos, B4, B1);
+                        if (intersect.result == true)
+                        {
+                            visibilityPolygon.push_back(intersect.pos);
+                            break;
+                        }
+
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 void Scene_Play::sStatus()
 {
@@ -760,6 +895,19 @@ void Scene_Play::sStatus()
             }
         }
 
+        if (e->hasComponent<CCooldown>())
+        {
+            if (e->getComponent<CCooldown>().curTimer > 0)
+            {
+                std::cout << e->getComponent<CCooldown>().curTimer << std::endl;
+                e->getComponent<CCooldown>().curTimer--;
+            }
+            else
+            {
+                e->getComponent<CCooldown>().ready = true;
+            }
+        }
+
         if (e->hasComponent<CHealth>())
         {
             if (e->tag() != "player")
@@ -798,35 +946,6 @@ void Scene_Play::sCollision()
     {
         for (auto b : m_entityManager.getEntities())
         {
-            /*
-            if (e->getComponent<CAnimation>().animation.getName() == "Heart" && Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && b->tag() == "player")
-            {
-                std::cout << "Inventory Before: \n";
-                for (int i = 0; i < m_player->getComponent<CInventory>().items.size(); i++)
-                {
-                    std::cout << m_player->getComponent<CInventory>().items[i] << std::endl;
-                }
-                std::cout << std::endl;
-                
-
-                auto healthPotion = std::shared_ptr<HealthPotion>(new HealthPotion());
-                bool notFull = sAddItem(b, healthPotion);
-                
-                if (notFull == true)
-                {
-                    e->destroy();
-                    m_game->playSound("GetItem");
-                }
-
-                std::cout << "Inventory After: \n";
-                for (int i = 0; i < m_player->getComponent<CInventory>().items.size(); i++)
-                {
-                    std::cout << m_player->getComponent<CInventory>().items[i] << std::endl;
-                }
-                std::cout << std::endl;
-            }
-            */
-
             if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile")
             { 
                 //if movement came from below
@@ -864,6 +983,11 @@ void Scene_Play::sCollision()
                 //if movement came from the side
                 else if (Physics::GetPreviousOverlap(e, b).y > 0)
                 {
+                    if (b->tag() == "bullet")
+                    {
+                        b->destroy();
+                    }
+
                     if (b->getComponent<CTransform>().pos.x > e->getComponent<CTransform>().pos.x)
                     {
                         b->getComponent<CTransform>().pos.x += Physics::GetOverlap(e, b).x;
@@ -906,6 +1030,22 @@ void Scene_Play::sCollision()
                 // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
                 b->getComponent<CDamage>().damage = 0;
                 
+                m_game->playSound("EnemyHit");
+            }
+        }
+
+        for (auto b : m_entityManager.getEntities("bullet"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>())
+            {
+                b->destroy();
+
+                // Deal damage to enemy
+                e->getComponent<CHealth>().current -= b->getComponent<CDamage>().damage;
+
+                // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
+                b->getComponent<CDamage>().damage = 0;
+
                 m_game->playSound("EnemyHit");
             }
         }
@@ -1234,6 +1374,28 @@ void Scene_Play::sRender()
                 {
                     tick.setPosition(rect.getPosition() + sf::Vector2f(i * 64 * 1 / h.max, 0));
                     m_game->window().draw(tick);
+                }
+            }
+
+            if (e->hasComponent<CCooldown>())
+            {
+                if (e->getComponent<CCooldown>().ready != true)
+                {
+                    auto& c = e->getComponent<CCooldown>();
+                    Vec2 size(64, 6);
+                    sf::RectangleShape rect({ size.x, size.y });
+                    rect.setPosition(transform.pos.x - 32, transform.pos.y - 64);
+                    rect.setFillColor(sf::Color(96, 96, 96));
+                    rect.setOutlineColor(sf::Color::Black);
+                    rect.setOutlineThickness(2);
+                    m_game->window().draw(rect);
+
+                    float ratio = (float)(c.curTimer) / c.maxTimer;
+                    size.x *= ratio;
+                    rect.setSize({ size.x , size.y });
+                    rect.setFillColor(sf::Color(255, 255, 0));
+                    rect.setOutlineThickness(0);
+                    m_game->window().draw(rect);
                 }
             }
         }

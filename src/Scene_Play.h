@@ -46,6 +46,7 @@ protected:
     void init(const std::string & levelPath);
 
     void loadLevel(const std::string & filename);
+    void saveLevel(const std::string & filename);
 
     void onEnd();
     void update();
@@ -63,6 +64,7 @@ protected:
     void sSwapWeapon();
     void sTestValue();
     void sCamera();
+    void sLighting();
     
 
 public:

@@ -51,10 +51,10 @@ bool Physics::IsInside(const Vec2& pos, std::shared_ptr<Entity> e)
     return false;
 }
 
+//To know how works: Raycasting and Line Intersections Lecture
 Intersect Physics::LineIntersect(const Vec2& a, const Vec2& b, const Vec2& c, const Vec2& d)
 {
    
-
     Vec2 r = (b - a);
     Vec2 s = (d - c);
     float rxs = (r.x * s.y) - (r.y * s.x);
@@ -66,7 +66,7 @@ Intersect Physics::LineIntersect(const Vec2& a, const Vec2& b, const Vec2& c, co
     {
         return { true, Vec2(a.x + (t * r.x), a.y + (t * r.y)) };
     }
-
+    
     return { false, Vec2(0,0) };
     
 }
