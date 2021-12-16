@@ -35,7 +35,7 @@ public:
 
     Assets();
                                       
-    void loadFromFile(const std::string & path);
+    void loadFromFile(const std::string& path);
                                       
     const sf::Texture & getTexture(const std::string & textureName) const;
     const Animation &   getAnimation(const std::string & animationName) const;

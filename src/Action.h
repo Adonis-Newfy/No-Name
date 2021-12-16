@@ -21,7 +21,7 @@
 class Action
 {
     std::string m_name  = "NONE"; 
-    std::string m_type  = "NONE"; 
+    std::string m_type = "NONE";
     
 public:
                                       

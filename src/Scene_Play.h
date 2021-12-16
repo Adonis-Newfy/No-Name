@@ -62,6 +62,7 @@ protected:
     void loadData(const std::string & filename);
 
     void onEnd();
+    void onDie();
     void update();
     void spawnPlayer();
     void spawnWeapon(std::shared_ptr<Entity> entity);

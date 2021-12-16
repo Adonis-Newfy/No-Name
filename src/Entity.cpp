@@ -29,7 +29,7 @@ bool Entity::isActive() const
 
 void Entity::destroy()
 { 
-    m_active = false; 
+    m_active = false;
 }
 
 size_t Entity::id() const

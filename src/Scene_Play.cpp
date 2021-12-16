@@ -20,6 +20,9 @@
 #include "GameEngine.h"
 #include "Components.h"
 #include "Scene_Menu.h"
+#include "Scene_Levels.h"
+#include "Scene_GameOver.h"
+#include "Scene_Victory.h"
 
 int totalMoney = 0;
 int levelMoney = 0;
@@ -79,6 +82,8 @@ void Scene_Play::init(const std::string& levelPath)
     loadData(m_saveData);
 
     std::srand(static_cast<unsigned int>(std::time(NULL)));
+
+    m_game->window().setView(m_game->window().getDefaultView());
 }
                                       
 void Scene_Play::loadLevel(const std::string& filename)
@@ -1165,10 +1170,11 @@ void Scene_Play::sStatus()
             {
                 if (e->getComponent<CHealth>().current <= 0)
                 {
-                    e->destroy();
-                    spawnPlayer();
+                    //e->destroy();
+                    //spawnPlayer();
                     //onDie(); To be implemented later
                     m_game->playSound("LinkDie");
+                    onDie();
                 }
             }
         }
@@ -1664,8 +1670,15 @@ void Scene_Play::onEnd()
     saveData(m_saveData);
     m_game->assets().getSound("MusicLevel").stop();
     m_game->playSound("MusicTitle");
-    m_game->changeScene("LEVELS", nullptr, true);
+    m_game->changeScene("VICTORY", std::make_shared<Scene_Victory>(m_game), true);
     
+}
+
+void Scene_Play::onDie()
+{
+    m_game->assets().getSound("MusicLevel").stop();
+    m_game->playSound("MusicTitle");
+    m_game->changeScene("DEFEAT", std::make_shared<Scene_GameOver>(m_game), true);
 }
 
 void Scene_Play::sRender()

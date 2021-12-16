@@ -99,23 +99,33 @@ void Scene_Menu::sDoAction(const Action& action)
 
 void Scene_Menu::sRender()
 {
+   
+
     // clear the window to a blue
     m_game->window().setView(m_game->window().getDefaultView());
-    m_game->window().clear(sf::Color(0, 0, 0));
+    m_game->window().clear();
+
+    // draw background
+    sf::Texture background(m_game->assets().getTexture("TexBackgr2"));
+    sf::Sprite backgroundSprite(background);
+    backgroundSprite.setPosition(m_game->window().getView().getCenter().x - 640, m_game->window().getView().getCenter().y - 384);
+    m_game->window().draw(backgroundSprite);
                                       
     // draw the game title in the top-left of the screen
-    m_menuText.setCharacterSize(48);
+    m_menuText.setCharacterSize(100);
     m_menuText.setString(m_title);
     m_menuText.setFillColor(sf::Color(100, 100, 100));
-    m_menuText.setPosition(sf::Vector2f(10, 10));
+    m_menuText.setPosition(sf::Vector2f(500, 20));
     m_game->window().draw(m_menuText);
+
+    m_menuText.setCharacterSize(50);
     
     // draw all of the menu options
     for (size_t i = 0; i < m_menuStrings.size(); i++)
     {
         m_menuText.setString(m_menuStrings[i]);
         m_menuText.setFillColor(i == m_selectedMenuIndex ? sf::Color::White : sf::Color(100, 100, 100));
-        m_menuText.setPosition(sf::Vector2f(10, 110 + i * 72));
+        m_menuText.setPosition(sf::Vector2f(500, 300 + i * 72));
         m_game->window().draw(m_menuText);
     }
 

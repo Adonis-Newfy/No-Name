@@ -28,7 +28,7 @@ class EntityManager
     size_t                              m_totalEntities = 0;    // total entities created
                                       
     // helper function to avoid repeated code
-    void removeDeadEntities(EntityVec & vec);
+    void removeDeadEntities(EntityVec& vec);
 
 public:
 
