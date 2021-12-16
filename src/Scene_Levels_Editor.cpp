@@ -36,7 +36,7 @@ void Scene_Levels_Editor::init()
     m_levelPaths.push_back("level4.txt");
     m_levelPaths.push_back("level5.txt");
 
-    m_menuText.setFont(m_game->assets().getFont("Megaman"));
+    m_menuText.setFont(m_game->assets().getFont("Golem"));
     m_menuText.setCharacterSize(64);
 }
 
