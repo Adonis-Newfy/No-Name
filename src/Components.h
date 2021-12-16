@@ -195,7 +195,7 @@ public:
 
         for (int i = 1; i < 4; i++)
         {
-            unlocked.push_back(true);
+            unlocked.push_back(false);
         }
     }
 

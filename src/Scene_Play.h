@@ -36,12 +36,15 @@ protected:
 
     std::shared_ptr<Entity> m_player;
     std::string             m_levelPath;
+    std::string             m_saveData = "savedata.txt";
     PlayerConfig            m_playerConfig;
     bool                    m_drawTextures = true;
     bool                    m_drawCollision = false;
     bool                    m_follow = false;
 
     std::vector<Vec2>       BlackTiles;
+
+    std::vector<bool>       unlocked;
 
     // NEW
     bool                        m_drawInventory = false;    // NEW
@@ -54,7 +57,9 @@ protected:
     void init(const std::string & levelPath);
 
     void loadLevel(const std::string & filename);
-    void saveLevel(const std::string & filename);
+
+    void saveData(const std::string & filename);
+    void loadData(const std::string & filename);
 
     void onEnd();
     void update();

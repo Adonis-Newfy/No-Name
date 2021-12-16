@@ -35,6 +35,11 @@ void Scene_Play::init(const std::string& levelPath)
 {
     loadLevel(levelPath);
 
+    for (int i = 0; i < 4; i++)
+    {
+        unlocked.push_back(false);
+    }
+
     
     // Register the actions required to play the game
 
@@ -48,7 +53,6 @@ void Scene_Play::init(const std::string& levelPath)
     registerAction(sf::Keyboard::D, "MOVE_RIGHT");          // Move Right    
     
     registerAction(sf::Keyboard::Space, "ATTACK");          // Attack
-    registerAction(sf::Keyboard::I, "ITEM");                // Use Item From Inventory (TEMP)
     registerAction(sf::Keyboard::Tab, "SWAP");              // Swap Currently Equipped Weapon
     registerAction(sf::Keyboard::V, "TEST");                // For testing purposes, prints a value to console.
 
@@ -57,7 +61,7 @@ void Scene_Play::init(const std::string& levelPath)
     registerAction(sf::Keyboard::Right, "MENU_POSITIVE");       // NEW: Select menu option
     registerAction(sf::Keyboard::Left, "MENU_NEGATIVE");       // NEW: Select menu option
 
-    registerAction(sf::Keyboard::E, "OPEN_INVENTORY");      // NEW: Open Inventory
+    registerAction(sf::Keyboard::I, "OPEN_INVENTORY");      // NEW: Open Inventory
 
     m_inventoryStrings.push_back("Health Potion");
     m_inventoryStrings.push_back("Defense Potion");
@@ -72,6 +76,7 @@ void Scene_Play::init(const std::string& levelPath)
     m_items.push_back(IP);
     m_items.push_back(SP);
 
+    loadData(m_saveData);
 
     std::srand(static_cast<unsigned int>(std::time(NULL)));
 }
@@ -166,6 +171,29 @@ void Scene_Play::loadLevel(const std::string& filename)
             }
         }
 
+        if (text == "Button")
+        {
+            std::string animationName = "";
+            int roomX;
+            int roomY;
+            int tileX;
+            int tileY;
+            int blockV;
+            int blockM;
+            int unlock; //1 = warrior, 2 = mage, 3 = ranger
+
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV >> unlock;
+
+            auto tile = m_entityManager.addEntity("button");
+            tile->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+            tile->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            tile->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
+            tile->addComponent<CWeapons>();
+
+            tile->getComponent<CWeapons>().unlockWeapon(unlock);
+            tile->getComponent<CWeapons>().selectWeapon(unlock);
+        }
+
         if (text == "Dec")
         {
             std::string animationName = "";
@@ -173,13 +201,16 @@ void Scene_Play::loadLevel(const std::string& filename)
             int roomY;
             int tileX;
             int tileY;
+            int blockV;
+            int blockM;
             int layer;
 
-            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> layer;
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV >> layer;
 
             auto dec = m_entityManager.addEntity("dec");
             dec->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
             dec->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            dec->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
             dec->addComponent<CLayer>(layer);
         }
 
@@ -298,9 +329,124 @@ void Scene_Play::loadLevel(const std::string& filename)
     m_game->playSound("MusicLevel");
 }
 
-void Scene_Play::saveLevel(const std::string& filename)
+void Scene_Play::saveData(const std::string& filename)
 {
     std::ofstream file(filename);
+
+    auto weapons = m_player->getComponent<CWeapons>().unlocked;
+
+    file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << m_player->getComponent<CHealth>().current << " " << (totalMoney + levelMoney) << std::endl;
+
+    file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << std::endl;
+
+    for (int i = 0; i < m_player->getComponent<CInventory>().currentSize; i++)
+    {
+        int item = 0;
+        bool flag = false;
+
+        if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[0]->itemID)
+        {
+            item = 0;
+            flag = true;
+        }
+
+        else if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[1]->itemID)
+        {
+            item = 1;
+            flag = true;
+        }
+
+        else if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[2]->itemID)
+        {
+            item = 2;
+            flag = true;
+        }
+
+        if (flag == true)
+        {
+            file << "Inventory " << item << std::endl;
+            flag = false;
+        }
+        
+    }
+
+    /*
+    * BasicData Base War Ran Mag HP Gold
+    * UnlockedLevels One Two Three Final
+    * Inventory ............................ 
+    */
+}
+
+void Scene_Play::loadData(const std::string& filename)
+{
+    std::ifstream fin(filename);
+    std::string text;
+
+    while (fin >> text)
+    {
+        if (text == "BasicData")
+        {
+            int unlockedB;
+            int unlockedW;
+            int unlockedR;
+            int unlockedM;
+
+            int hp;
+
+            int money;
+
+            fin >> unlockedB >> unlockedW >> unlockedR >> unlockedM >> hp >> money;
+
+            if (unlockedB)
+            {
+                m_player->getComponent<CWeapons>().unlockWeapon(0);
+            }
+            if (unlockedW)
+            {
+                m_player->getComponent<CWeapons>().unlockWeapon(1);
+            }
+            if (unlockedR)
+            {
+                m_player->getComponent<CWeapons>().unlockWeapon(2);
+            }
+            if (unlockedM)
+            {
+                m_player->getComponent<CWeapons>().unlockWeapon(3);
+            }
+
+            m_player->getComponent<CHealth>().current = hp;
+
+            totalMoney = money;
+        }
+
+        if (text == "UnlockedLevels")
+        {
+            std::vector<bool> levels;
+
+            int level1;
+            int level2;
+            int level3;
+            int level4;
+
+            fin >> level1 >> level2 >> level3 >> level4;
+
+            levels.push_back(level1);
+            levels.push_back(level2);
+            levels.push_back(level3);
+            levels.push_back(level4);
+
+            unlocked = std::move(levels);
+        }
+
+        if (text == "Inventory")
+        {
+            int item;
+
+            fin >> item;
+
+            sAddItem(m_player, m_items[item]);
+        }
+    }
 }
                                       
 Vec2 Scene_Play::getPosition(int rx, int ry, int tx, int ty) const
@@ -423,16 +569,7 @@ void Scene_Play::sSwapWeapon()
 
 void Scene_Play::sTestValue()
 {
-    /*
-    auto& testVal = m_player->getComponent<CWeapons>().getWeapon().animationName;
-
-    std::cout << testVal << std::endl;
-    */
-
-
-    const std::string filepath = "test.txt";
-
-    saveLevel(filepath);
+    std::cout << levelMoney << std::endl;
 }
 
 void Scene_Play::update()
@@ -1020,6 +1157,7 @@ void Scene_Play::sStatus()
                 if (e->getComponent<CHealth>().current <= 0)
                 {
                     e->destroy();
+                    levelMoney += e->getComponent<CDamage>().damage;
                     m_game->playSound("EnemyDie");
                 }
             }
@@ -1029,6 +1167,7 @@ void Scene_Play::sStatus()
                 {
                     e->destroy();
                     spawnPlayer();
+                    //onDie(); To be implemented later
                     m_game->playSound("LinkDie");
                 }
             }
@@ -1057,6 +1196,11 @@ void Scene_Play::sCollision()
                 if (Physics::GetPreviousOverlap(e, b).x > 0 && b->getComponent<CTransform>().pos.y > e->getComponent<CTransform>().pos.y)
                 {
 
+                    if (b->tag() == "bullet")
+                    {
+                        b->destroy();
+                    }
+
                     b->getComponent<CTransform>().pos.y += Physics::GetOverlap(e, b).y + 5; // + 5 to deal with a bug where the player was sticking to platforms that were moving down
                     b->getComponent<CTransform>().velocity.y = 0;
 
@@ -1069,6 +1213,11 @@ void Scene_Play::sCollision()
                 //if movement came from above
                 else if (Physics::GetPreviousOverlap(e, b).x > 0 && b->getComponent<CTransform>().pos.y < e->getComponent<CTransform>().pos.y)
                 {
+                    if (b->tag() == "bullet")
+                    {
+                        b->destroy();
+                    }
+
                     b->getComponent<CTransform>().pos.y -= Physics::GetOverlap(e, b).y;
                     b->getComponent<CTransform>().velocity.y = 0;
 
@@ -1168,6 +1317,43 @@ void Scene_Play::sCollision()
             }
         }
     }
+
+    for (auto e : m_entityManager.getEntities("dec"))
+    {
+        if (e->getComponent<CAnimation>().animation.getName() == "Exit")
+        {
+            if (Physics::GetOverlap(e, m_player).x > 0 && Physics::GetOverlap(e, m_player).y > 0 && e->hasComponent<CBoundingBox>())
+            {
+                //save player data
+                onEnd();
+            }
+        }
+
+        if (e->getComponent<CAnimation>().animation.getName() == "Coin")
+        {
+            if (Physics::GetOverlap(e, m_player).x > 0 && Physics::GetOverlap(e, m_player).y > 0 && e->hasComponent<CBoundingBox>())
+            {
+                e->destroy();
+                levelMoney++;
+            }
+        }
+    }
+
+    for (auto e : m_entityManager.getEntities("button"))
+    {
+        if (Physics::GetOverlap(e, m_player).x > 0 && Physics::GetOverlap(e, m_player).y > 0 && e->hasComponent<CBoundingBox>())
+        {
+            for (int i = 1; i < e->getComponent<CWeapons>().unlocked.size(); i++)
+            {
+                if (e->getComponent<CWeapons>().unlocked[i] == true)
+                {
+                    m_player->getComponent<CWeapons>().unlockWeapon(i);
+                    e->destroy();
+                    break;
+                }
+            }
+        }
+    }
     /*
 
     */
@@ -1241,6 +1427,7 @@ void Scene_Play::sUseItem(std::shared_ptr<Entity> entity, std::shared_ptr<Item> 
                 item->use(entity);
                 entity->getComponent<CInventory>().items.erase(entity->getComponent<CInventory>().items.begin() + i);
                 entity->getComponent<CInventory>().currentSize--;
+                break;
             }
         }
     }
@@ -1474,9 +1661,10 @@ void Scene_Play::onEnd()
     // - play the menu music
     // - change scene to menu
 
+    saveData(m_saveData);
     m_game->assets().getSound("MusicLevel").stop();
     m_game->playSound("MusicTitle");
-    m_game->changeScene("MENU", nullptr, true);
+    m_game->changeScene("LEVELS", nullptr, true);
     
 }
 
