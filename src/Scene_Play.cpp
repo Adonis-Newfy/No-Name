@@ -52,6 +52,27 @@ void Scene_Play::init(const std::string& levelPath)
     registerAction(sf::Keyboard::Tab, "SWAP");              // Swap Currently Equipped Weapon
     registerAction(sf::Keyboard::V, "TEST");                // For testing purposes, prints a value to console.
 
+    registerAction(sf::Keyboard::Up, "MENU_UP");             // NEW: Move menu option selection up
+    registerAction(sf::Keyboard::Down, "MENU_DOWN");           // NEW: Move menu option selection down
+    registerAction(sf::Keyboard::Right, "MENU_POSITIVE");       // NEW: Select menu option
+    registerAction(sf::Keyboard::Left, "MENU_NEGATIVE");       // NEW: Select menu option
+
+    registerAction(sf::Keyboard::E, "OPEN_INVENTORY");      // NEW: Open Inventory
+
+    m_inventoryStrings.push_back("Health Potion");
+    m_inventoryStrings.push_back("Defense Potion");
+    m_inventoryStrings.push_back("Damage Potion");
+    m_menuText.setFont(m_game->assets().getFont("Golem"));
+    m_menuText.setCharacterSize(32);
+
+    auto HP = std::shared_ptr<HealthPotion>(new HealthPotion());
+    auto IP = std::shared_ptr<InvulnPotion>(new InvulnPotion());
+    auto SP = std::shared_ptr<StrengthPotion>(new StrengthPotion());
+    m_items.push_back(HP);
+    m_items.push_back(IP);
+    m_items.push_back(SP);
+
+
     std::srand(static_cast<unsigned int>(std::time(NULL)));
 }
                                       
@@ -143,6 +164,23 @@ void Scene_Play::loadLevel(const std::string& filename)
                 tile->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
                 tile->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
             }
+        }
+
+        if (text == "Dec")
+        {
+            std::string animationName = "";
+            int roomX;
+            int roomY;
+            int tileX;
+            int tileY;
+            int layer;
+
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> layer;
+
+            auto dec = m_entityManager.addEntity("dec");
+            dec->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+            dec->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            dec->addComponent<CLayer>(layer);
         }
 
         if (text == "NPC")
@@ -404,7 +442,7 @@ void Scene_Play::update()
     
     // Implement pause functionality
        
-    if (!m_paused)
+    if (!m_paused && !m_drawInventory)
     {
         sAI();
         sMovement();
@@ -577,6 +615,55 @@ void Scene_Play::sDoAction(const Action& action)
         else if (action.name() == "ITEM") { sUseItem(m_player, m_player->getComponent<CInventory>().items[0]); } //Uses the first item in the player's inventory
         else if (action.name() == "SWAP") { sSwapWeapon(); }
         else if (action.name() == "TEST") { sTestValue(); }
+        else if (action.name() == "OPEN_INVENTORY")
+             {
+                 if (!m_paused)
+                 {
+                     m_selectedMenuIndex = 0;
+
+                     m_drawInventory = !m_drawInventory;
+
+                 }
+             }
+        else if (action.name() == "MENU_UP")
+             {
+                 if (m_drawInventory || m_paused)
+                 {
+                     if (m_selectedMenuIndex > 0)
+                     {
+                         m_selectedMenuIndex--;
+                     }
+                     else if (m_drawInventory)
+                     {
+                         m_selectedMenuIndex = m_inventoryStrings.size() - 1;
+                     }
+                 }
+             }
+        else if (action.name() == "MENU_DOWN")
+             {
+                 if (m_drawInventory)
+                 {
+                     m_selectedMenuIndex = (m_selectedMenuIndex + 1) % m_inventoryStrings.size();
+                 }
+
+             }
+        else if (action.name() == "MENU_POSITIVE")
+             {
+                 if (m_selectedMenuIndex == 0)
+                 {
+                     sUseItem(m_player, m_items[0]);
+                 }
+
+                 if (m_selectedMenuIndex == 1)
+                 {
+                     sUseItem(m_player, m_items[1]);
+                 }
+
+                 if (m_selectedMenuIndex == 2)
+                 {
+                     sUseItem(m_player, m_items[2]);
+                 }
+             }
     }
     else if (action.type() == "END")
     {
@@ -663,7 +750,17 @@ void Scene_Play::sAI()
 
                 }
 
+                if (e->getComponent<CTransform>().velocity.x < 0 && e->tag() != "tile")
+                {
+                    e->getComponent<CTransform>().scale.x = -1.0f;
+                }
+                else if (e->getComponent<CTransform>().velocity.x > 0 && e->tag() != "tile")
+                {
+                    e->getComponent<CTransform>().scale.x = 1.0f;
+                }
+
             }
+
             if (e->hasComponent<CFollowPlayer>())
             {
                 //Do follow things
@@ -739,6 +836,15 @@ void Scene_Play::sAI()
                         }
 
                     }
+                }
+
+                if (e->getComponent<CTransform>().velocity.x < 0)
+                {
+                    e->getComponent<CTransform>().scale.x = -1.0f;
+                }
+                else if (e->getComponent<CTransform>().velocity.x > 0)
+                {
+                    e->getComponent<CTransform>().scale.x = 1.0f;
                 }
             }
         }     
@@ -945,12 +1051,13 @@ void Scene_Play::sCollision()
     {
         for (auto b : m_entityManager.getEntities())
         {
-            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile")
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile" && b->tag() != "dec")
             { 
                 //if movement came from below
                 if (Physics::GetPreviousOverlap(e, b).x > 0 && b->getComponent<CTransform>().pos.y > e->getComponent<CTransform>().pos.y)
                 {
-                    b->getComponent<CTransform>().pos.y += Physics::GetOverlap(e, b).y;
+
+                    b->getComponent<CTransform>().pos.y += Physics::GetOverlap(e, b).y + 5; // + 5 to deal with a bug where the player was sticking to platforms that were moving down
                     b->getComponent<CTransform>().velocity.y = 0;
 
                     if (b->hasComponent<CInput>())
@@ -1157,19 +1264,75 @@ void Scene_Play::sAnimation()
     auto& pInput = m_player->getComponent<CInput>();
     auto& pWeapon = m_player->getComponent<CWeapons>().getWeapon();
     
-    // sets the animation of the player based on its CState component
-    if (m_player->getComponent<CState>().state == "running" && m_player->getComponent<CAnimation>().animation.getName() != "RunRight")
+
+    if (pWeapon.tag == "Basic")
     {
-        m_player->addComponent<CAnimation>(m_game->assets().getAnimation("RunRight"), true);
+        // sets the animation of the player based on its CState component
+        if (m_player->getComponent<CState>().state == "running" && m_player->getComponent<CAnimation>().animation.getName() != "RunMan")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("RunMan"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "jumping")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("JumpUpMan"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "standing" && m_player->getComponent<CAnimation>().animation.getName() != "IdleMan")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("IdleMan"), true);
+        }
     }
-    else if (m_player->getComponent<CState>().state == "jumping")
+
+    if (pWeapon.tag == "Warrior")
     {
-        m_player->addComponent<CAnimation>(m_game->assets().getAnimation("RunRight"), true);
+        // sets the animation of the player based on its CState component
+        if (m_player->getComponent<CState>().state == "running" && m_player->getComponent<CAnimation>().animation.getName() != "RunWar")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("RunWar"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "jumping")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("JumpWar"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "standing" && m_player->getComponent<CAnimation>().animation.getName() != "IdleWar")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("IdleWar"), true);
+        }
     }
-    else if (m_player->getComponent<CState>().state == "standing")
+
+    if (pWeapon.tag == "Ranger")
     {
-        m_player->addComponent<CAnimation>(m_game->assets().getAnimation("StandRight"), true);
+        // sets the animation of the player based on its CState component
+        if (m_player->getComponent<CState>().state == "running" && m_player->getComponent<CAnimation>().animation.getName() != "RunRang")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("RunRang"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "jumping")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("JumpRang"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "standing" && m_player->getComponent<CAnimation>().animation.getName() != "IdleRang")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("IdleRang"), true);
+        }
     }
+
+    if (pWeapon.tag == "Mage")
+    {
+        // sets the animation of the player based on its CState component
+        if (m_player->getComponent<CState>().state == "running" && m_player->getComponent<CAnimation>().animation.getName() != "RunWiz")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("RunWiz"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "jumping")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("JumpWiz"), true);
+        }
+        else if (m_player->getComponent<CState>().state == "standing" && m_player->getComponent<CAnimation>().animation.getName() != "IdleWiz")
+        {
+            m_player->addComponent<CAnimation>(m_game->assets().getAnimation("IdleWiz"), true);
+        }
+    }
+    
 
     // for each entity with an animation, call entity->getComponent<CAnimation>().animation.update()
     // if the animation is not repeated, and it has ended, destroy the entity.
@@ -1295,6 +1458,8 @@ void Scene_Play::sCamera()
 
         view.setCenter(viewCenterX, viewCenterY);
 
+        
+
     }
 
     // then set the window view
@@ -1319,31 +1484,81 @@ void Scene_Play::sRender()
 {
     // RENDERING DONE FOR YOU
 
-    m_game->window().clear(sf::Color(255, 192, 122));
+    m_game->window().clear();
     sf::RectangleShape tick({ 1.0f, 6.0f });
     tick.setFillColor(sf::Color::Black);
 
     // draw all Entity textures / animations
     if (m_drawTextures)
     {
-        // draw entity animations
+        // draw background
+        sf::Texture background(m_game->assets().getTexture("TexBackground"));
+        sf::Sprite backgroundSprite(background);
+        backgroundSprite.setPosition(m_game->window().getView().getCenter().x - 640, m_game->window().getView().getCenter().y - 384);
+        m_game->window().draw(backgroundSprite);
+
+
+        // Draw foreground decs
+        for (auto e : m_entityManager.getEntities("dec"))
+        {
+            if (e->getComponent<CLayer>().layer == 1)
+            {
+                auto& transform = e->getComponent<CTransform>();
+                sf::Color c = sf::Color::White;
+
+                if (e->hasComponent<CAnimation>())
+                {
+                    auto& animation = e->getComponent<CAnimation>().animation;
+                    animation.getSprite().setRotation(transform.angle);
+                    animation.getSprite().setPosition(transform.pos.x, transform.pos.y);
+                    animation.getSprite().setScale(transform.scale.x, transform.scale.y);
+                    animation.getSprite().setColor(c);
+                    m_game->window().draw(animation.getSprite());
+                }
+            }
+        }
+
+        // draw non-dec entity animations
         for (auto e : m_entityManager.getEntities())
         {
-            auto& transform = e->getComponent<CTransform>();
-            sf::Color c = sf::Color::White;
-            if (e->hasComponent<CInvincibility>())
+            if (e->tag() != "dec")
             {
-                c = sf::Color(255, 255, 255, 128);
+                auto& transform = e->getComponent<CTransform>();
+                sf::Color c = sf::Color::White;
+                if (e->hasComponent<CInvincibility>())
+                {
+                    c = sf::Color(255, 255, 255, 128);
+                }
+
+                if (e->hasComponent<CAnimation>())
+                {
+                    auto& animation = e->getComponent<CAnimation>().animation;
+                    animation.getSprite().setRotation(transform.angle);
+                    animation.getSprite().setPosition(transform.pos.x, transform.pos.y);
+                    animation.getSprite().setScale(transform.scale.x, transform.scale.y);
+                    animation.getSprite().setColor(c);
+                    m_game->window().draw(animation.getSprite());
+                }
             }
-                                      
-            if (e->hasComponent<CAnimation>())
+        }
+
+        // Draw foreground decs
+        for (auto e : m_entityManager.getEntities("dec"))
+        {
+            if (e->getComponent<CLayer>().layer == 2)
             {
-                auto& animation = e->getComponent<CAnimation>().animation;
-                animation.getSprite().setRotation(transform.angle);
-                animation.getSprite().setPosition(transform.pos.x, transform.pos.y);
-                animation.getSprite().setScale(transform.scale.x, transform.scale.y);
-                animation.getSprite().setColor(c);
-                m_game->window().draw(animation.getSprite());
+                auto& transform = e->getComponent<CTransform>();
+                sf::Color c = sf::Color::White;
+
+                if (e->hasComponent<CAnimation>())
+                {
+                    auto& animation = e->getComponent<CAnimation>().animation;
+                    animation.getSprite().setRotation(transform.angle);
+                    animation.getSprite().setPosition(transform.pos.x, transform.pos.y);
+                    animation.getSprite().setScale(transform.scale.x, transform.scale.y);
+                    animation.getSprite().setColor(c);
+                    m_game->window().draw(animation.getSprite());
+                }
             }
         }
 
@@ -1398,6 +1613,73 @@ void Scene_Play::sRender()
                 }
             }
         }
+    }
+
+    if (m_drawInventory)
+    {
+
+        //Draw a rectangle to encompass the menu options
+
+        float menuX = m_game->window().getView().getCenter().x - 630;
+        float menuY = m_game->window().getView().getCenter().y - 374;
+
+        sf::RectangleShape rect({ 300, 250 });
+        rect.setPosition(menuX, menuY);
+        rect.setFillColor(sf::Color::White);
+        rect.setOutlineColor(sf::Color::Black);
+        rect.setOutlineThickness(2);
+        m_game->window().draw(rect);
+
+        int HPamount = 0;
+        int IPamount = 0;
+        int SPamount = 0;
+        for (int i = 0; i < m_player->getComponent<CInventory>().items.size(); i++)
+        {
+            if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[0]->itemID)
+            {
+                HPamount += 1;
+            }
+            if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[1]->itemID)
+            {
+                IPamount += 1;
+            }
+            if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[2]->itemID)
+            {
+                SPamount += 1;
+            }
+        }
+
+        // draw all of the menu options
+        for (size_t i = 0; i < m_inventoryStrings.size(); i++)
+        {
+            m_menuText.setString(m_inventoryStrings[i]);
+            m_menuText.setFillColor(i == m_selectedMenuIndex ? sf::Color::Black : sf::Color(100, 100, 100));
+            m_menuText.setPosition(sf::Vector2f(menuX + 10, menuY + 10 + i * 72));
+            m_game->window().draw(m_menuText);
+            if (i == 0)
+            {
+                m_menuText.setString(std::to_string(HPamount));
+                m_menuText.setFillColor(i == m_selectedMenuIndex ? sf::Color::Black : sf::Color(100, 100, 100));
+                m_menuText.setPosition(sf::Vector2f(menuX + 260, menuY + 10 + i * 72));
+                m_game->window().draw(m_menuText);
+            }
+            if (i == 1)
+            {
+                m_menuText.setString(std::to_string(IPamount));
+                m_menuText.setFillColor(i == m_selectedMenuIndex ? sf::Color::Black : sf::Color(100, 100, 100));
+                m_menuText.setPosition(sf::Vector2f(menuX + 260, menuY + 10 + i * 72));
+                m_game->window().draw(m_menuText);
+            }
+            if (i == 2)
+            {
+                m_menuText.setString(std::to_string(SPamount));
+                m_menuText.setFillColor(i == m_selectedMenuIndex ? sf::Color::Black : sf::Color(100, 100, 100));
+                m_menuText.setPosition(sf::Vector2f(menuX + 260, menuY + 10 + i * 72));
+                m_game->window().draw(m_menuText);
+            }
+
+        }
+
     }
 
     // draw all Entity collision bounding boxes with a rectangleshape

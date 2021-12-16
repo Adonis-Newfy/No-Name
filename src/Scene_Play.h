@@ -42,6 +42,14 @@ protected:
     bool                    m_follow = false;
 
     std::vector<Vec2>       BlackTiles;
+
+    // NEW
+    bool                        m_drawInventory = false;    // NEW
+    std::vector<std::string>    m_inventoryStrings;         // NEW
+    size_t                      m_selectedMenuIndex = 0;    // NEW
+    sf::Text                    m_menuText;                 // NEW
+
+    std::vector<std::shared_ptr<Item>> m_items;
     
     void init(const std::string & levelPath);
 

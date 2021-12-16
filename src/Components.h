@@ -244,6 +244,14 @@ public:
         ready = false;
     }
 };
+
+class CLayer : public Component
+{
+public:
+    int layer;
+    CLayer() {}
+    CLayer(int l) : layer(l) {}
+};
                                       
 // Copyright (C) David Churchill - All Rights Reserved
 // COMP4300 - 2021FALL - Assignment 4

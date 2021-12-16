@@ -36,7 +36,8 @@ typedef std::tuple<
     CInventory,
     CWeapons,
     CBuffed,
-    CCooldown
+    CCooldown,
+    CLayer
 > ComponentTuple;
 
 class Entity
