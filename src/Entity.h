@@ -37,7 +37,9 @@ typedef std::tuple<
     CWeapons,
     CBuffed,
     CCooldown,
-    CLayer
+    CLayer,
+    CBoss,
+    CBossArm
 > ComponentTuple;
 
 class Entity

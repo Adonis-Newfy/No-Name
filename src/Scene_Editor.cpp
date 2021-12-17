@@ -151,15 +151,40 @@ void Scene_Editor::loadLevel(const std::string& filename)
             int roomY;
             int tileX;
             int tileY;
+            int blockV;
+            int blockM;
             int layer;
 
-            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> layer;
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV >> layer;
 
             auto dec = m_entityManager.addEntity("dec");
             dec->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
             dec->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            dec->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
             dec->addComponent<CLayer>(layer);
-            dec->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), 0, 0);
+        }
+
+        if (text == "Button")
+        {
+            std::string animationName = "";
+            int roomX;
+            int roomY;
+            int tileX;
+            int tileY;
+            int blockV;
+            int blockM;
+            int unlock; //1 = warrior, 2 = mage, 3 = ranger
+
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV >> unlock;
+
+            auto tile = m_entityManager.addEntity("button");
+            tile->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+            tile->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            tile->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
+            tile->addComponent<CWeapons>();
+
+            tile->getComponent<CWeapons>().unlockWeapon(unlock);
+            tile->getComponent<CWeapons>().selectWeapon(unlock);
         }
 
         if (text == "NPC")
@@ -401,7 +426,7 @@ void Scene_Editor::saveLevel(const std::string& filename)
                     layer = 2;
                 }
 
-                file << "Dec " << animationName << " " << roomX << " " << roomY << " " << tileX << " " << tileY << " " << layer << std::endl;
+                file << "Dec " << animationName << " " << roomX << " " << roomY << " " << tileX << " " << tileY << " " << 0 << " " << 0 << " " << layer << std::endl;
             }
         }
     }

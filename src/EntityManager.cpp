@@ -58,7 +58,7 @@ void EntityManager::removeDeadEntities(EntityVec & vec)
 
 std::shared_ptr<Entity> EntityManager::addEntity(const std::string & tag)
 {
-    // creat the entity shared pointer
+    // create the entity shared pointer
     auto entity = std::shared_ptr<Entity>(new Entity(m_totalEntities++, tag));
                                       
     // add it to the vector of entities that will be added on next update() call

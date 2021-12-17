@@ -252,6 +252,26 @@ public:
     CLayer() {}
     CLayer(int l) : layer(l) {}
 };
+
+
+class CBoss : public Component
+{
+public:
+
+    int maxTimer = 240;
+    int currentTimer = 0;
+
+    CBoss() {}
+
+};
+
+class CBossArm : public Component
+{
+public:
+
+    CBossArm() {}
+};
+
                                       
 // Copyright (C) David Churchill - All Rights Reserved
 // COMP4300 - 2021FALL - Assignment 4

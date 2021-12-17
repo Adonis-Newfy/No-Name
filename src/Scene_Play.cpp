@@ -176,6 +176,24 @@ void Scene_Play::loadLevel(const std::string& filename)
             }
         }
 
+        if (text == "KillTile")
+        {
+            std::string animationName = "";
+            int roomX;
+            int roomY;
+            int tileX;
+            int tileY;
+            int blockV;
+            int blockM;
+
+            fin >> animationName >> roomX >> roomY >> tileX >> tileY >> blockM >> blockV;
+
+            auto tile = m_entityManager.addEntity("killtile");
+            tile->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+            tile->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+            tile->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
+        }
+
         if (text == "Button")
         {
             std::string animationName = "";
@@ -278,6 +296,47 @@ void Scene_Play::loadLevel(const std::string& filename)
                 npc->addComponent<CHealth>(maxHealth, maxHealth);
                 npc->addComponent<CDamage>(damage);
                 npc->addComponent<CFollowPlayer>(getPosition(roomX, roomY, tileX, tileY), speed);
+                npc->addComponent<CGravity>(gravity);
+            }
+
+            if (AI == "Boss")
+            {
+                auto npc = m_entityManager.addEntity("boss");
+                npc->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+                npc->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+                npc->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
+                npc->addComponent<CHealth>(maxHealth, maxHealth);
+                npc->addComponent<CDamage>(damage);
+                npc->addComponent<CBoss>();
+                npc->addComponent<CGravity>(gravity);
+            }
+
+            if (AI == "BossArm")
+            {
+                float speed;
+                int patrolCount;
+                std::vector<Vec2> patrolPositions;
+
+                fin >> speed >> patrolCount;
+
+                for (int i = 0; i < patrolCount; i++)
+                {
+                    int x;
+                    int y;
+
+                    fin >> x >> y;
+
+                    Vec2 position = getPosition(roomX, roomY, x, y);
+
+                    patrolPositions.push_back(position);
+                }
+
+                auto npc = m_entityManager.addEntity("bossarm");
+                npc->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
+                npc->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
+                npc->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
+                npc->addComponent<CDamage>(damage);
+                npc->addComponent<CPatrol>(patrolPositions, speed);
                 npc->addComponent<CGravity>(gravity);
             }
         }
@@ -824,7 +883,7 @@ void Scene_Play::sAI()
 
     for (auto e : m_entityManager.getEntities())
     {
-        if (e->tag() == "npc" || e->tag() == "tile")
+        if (e->tag() == "npc" || e->tag() == "tile" || e->tag() == "bossarm")
         {
             if (e->hasComponent<CGravity>())
             {
@@ -1196,7 +1255,7 @@ void Scene_Play::sCollision()
     {
         for (auto b : m_entityManager.getEntities())
         {
-            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile" && b->tag() != "dec")
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile" && b->tag() != "dec" && b->tag() != "bossarm")
             { 
                 //if movement came from below
                 if (Physics::GetPreviousOverlap(e, b).x > 0 && b->getComponent<CTransform>().pos.y > e->getComponent<CTransform>().pos.y)
@@ -1360,9 +1419,72 @@ void Scene_Play::sCollision()
             }
         }
     }
-    /*
 
-    */
+    for (auto e : m_entityManager.getEntities("bossarm"))
+    {
+        for (auto b : m_entityManager.getEntities("weapon"))
+        {
+
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>())
+            {
+                //e->destroy();
+
+                // Deal damage to enemy
+                for (auto x : m_entityManager.getEntities("boss"))
+                {
+                    x->getComponent<CHealth>().current -= b->getComponent<CDamage>().damage;
+                }
+
+                // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
+                b->getComponent<CDamage>().damage = 0;
+
+                m_game->playSound("EnemyHit");
+            }
+        }
+
+        for (auto b : m_entityManager.getEntities("bullet"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>())
+            {
+                b->destroy();
+
+                for (auto x : m_entityManager.getEntities("boss"))
+                {
+                    x->getComponent<CHealth>().current -= b->getComponent<CDamage>().damage;
+                }
+
+                // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
+                b->getComponent<CDamage>().damage = 0;
+
+                m_game->playSound("EnemyHit");
+            }
+        }
+
+        for (auto b : m_entityManager.getEntities("player"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && !m_player->hasComponent<CInvincibility>())
+            {
+                b->getComponent<CHealth>().current -= e->getComponent<CDamage>().damage;
+
+                b->addComponent<CInvincibility>(30);
+
+                m_game->playSound("LinkHurt");
+            }
+        }
+    }
+
+    for (auto e : m_entityManager.getEntities("killtile"))
+    {
+        for (auto b : m_entityManager.getEntities("player"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && !m_player->hasComponent<CInvincibility>())
+            {
+                b->getComponent<CHealth>().current -= 999;
+
+                m_game->playSound("LinkHurt");
+            }
+        }
+    }
 }
 
 //Helper function for determining collision between tiles and NPCs OR Players
