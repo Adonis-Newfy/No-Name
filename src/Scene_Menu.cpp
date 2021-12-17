@@ -22,6 +22,8 @@
 #include "GameEngine.h"
 #include "Components.h"
 #include "Action.h"
+#include "Scene_Options.h"
+
 
 Scene_Menu::Scene_Menu(GameEngine * gameEngine)
     : Scene(gameEngine)
@@ -45,7 +47,8 @@ void Scene_Menu::init()
     m_menuText.setFont(m_game->assets().getFont("Golem"));
     m_menuText.setCharacterSize(64);
 
-    m_game->playSound("MusicTitle");
+    m_game->playSound("Music");
+    m_game->assets().getSound("Music").setLoop(true);
 }
 
 void Scene_Menu::update()
@@ -76,7 +79,7 @@ void Scene_Menu::sDoAction(const Action& action)
 
             if (m_menuStrings[m_selectedMenuIndex] == "Options")
             {
-                
+                m_game->changeScene("OPTIONS", std::make_shared<Scene_Options>(m_game));
             }
 
             if (m_menuStrings[m_selectedMenuIndex] == "Level Editor")

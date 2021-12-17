@@ -63,7 +63,6 @@ void Scene_Levels_Editor::sDoAction(const Action& action)
             if (m_selectedMenuIndex < 5)
             {
                 m_game->changeScene("ZELDA", std::make_shared<Scene_Editor>(m_game, m_levelPaths[m_selectedMenuIndex]));
-                m_game->assets().getSound("MusicTitle").stop();
             }
 
             if (m_menuStrings[m_selectedMenuIndex] == "Back")

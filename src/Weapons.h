@@ -25,7 +25,7 @@ public:
 class Basic : public Weapon
 {
 public:
-	Basic(const int& id = 1, const std::string& t = "Basic", const std::string& a = "SwordRight", const int& life = 10, const int& d = 1, const int& l = 0, const bool& r = false) 
+	Basic(const int& id = 1, const std::string& t = "Basic", const std::string& a = "BSword", const int& life = 10, const int& d = 1, const int& l = 0, const bool& r = false) 
 		: Weapon(id, t, a, life, d, l, r) {}
 
 	//Basic Information
@@ -33,7 +33,7 @@ public:
 	std::string tag = "Basic";
 
 	//Entity Components
-	std::string animationName = "SwordRight";   // Animation the weapon should use.
+	std::string animationName = "BSword";   // Animation the weapon should use.
 	int lifespan = 10;								// Time the weapon should stay on screen.
 
 	//Functional Components
@@ -45,7 +45,7 @@ public:
 class Warrior : public Weapon
 {
 public:
-	Warrior(const int& id = 2, const std::string& t = "Warrior", const std::string& a = "RockTR", const int& life = 10, const int& d = 2, const int& l = 60, const bool& r = false) 
+	Warrior(const int& id = 2, const std::string& t = "Warrior", const std::string& a = "HSword", const int& life = 10, const int& d = 2, const int& l = 60, const bool& r = false) 
 		: Weapon(id, t, a, life, d, l, r) {}
 
 	//Basic Information
@@ -53,7 +53,7 @@ public:
 	std::string tag = "Warrior";
 
 	//Entity Components
-	std::string animationName = "WarriorWeaponRight";   // Animation the weapon should use.
+	std::string animationName = "HSword";   // Animation the weapon should use.
 	int lifespan = 10;								    // Time the weapon should stay on screen.
 
 	//Functional Components
@@ -65,7 +65,7 @@ public:
 class Ranger : public Weapon
 {
 public:
-	Ranger(const int& id = 3, const std::string& t = "Ranger", const std::string& a = "TreeTL", const int& life = 10, const int& d = 1, const int& l = 0, const bool& r = true) 
+	Ranger(const int& id = 3, const std::string& t = "Ranger", const std::string& a = "Arrow", const int& life = 10, const int& d = 1, const int& l = 0, const bool& r = true) 
 		: Weapon(id, t, a, life, d, l, r) {}
 
 	//Basic Information
@@ -73,7 +73,7 @@ public:
 	std::string tag = "Ranger";
 
 	//Entity Components
-	std::string animationName = "RangerWeaponRight";   // Animation the weapon should use.
+	std::string animationName = "Arrow";   // Animation the weapon should use.
 	int lifespan = 10;								    // Time the weapon should stay on screen.
 
 	//Functional Components
@@ -85,7 +85,7 @@ public:
 class Mage : public Weapon
 {
 public:
-	Mage(const int& id = 4, const std::string& t = "Mage", const std::string& a = "Black", const int& life = 10, const int& d = 3, const int& l = 120, const bool& r = true) 
+	Mage(const int& id = 4, const std::string& t = "Mage", const std::string& a = "Fireball", const int& life = 10, const int& d = 3, const int& l = 120, const bool& r = true) 
 		: Weapon(id, t, a, life, d, l, r) {}
 
 	//Basic Information
@@ -93,7 +93,7 @@ public:
 	std::string tag = "Mage";
 
 	//Entity Components
-	std::string animationName = "RangerWeaponRight";   // Animation the weapon should use.
+	std::string animationName = "Fireball";   // Animation the weapon should use.
 	int lifespan = 10;								    // Time the weapon should stay on screen.
 
 	//Functional Components

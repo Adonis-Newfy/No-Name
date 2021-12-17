@@ -16,6 +16,13 @@ Scene_Levels::Scene_Levels(GameEngine* gameEngine)
 void Scene_Levels::init()
 {
 
+    unlocked.push_back(true);
+
+    for (int i = 1; i < 5; i++)
+    {
+        unlocked.push_back(false);
+    }
+
     registerAction(sf::Keyboard::A, "UP");
     registerAction(sf::Keyboard::D, "DOWN");
     registerAction(sf::Keyboard::W, "ZELDA");
@@ -44,6 +51,8 @@ void Scene_Levels::init()
     view.setCenter(getPosition(0, 0, 7, 10).x, getPosition(0, 0, 7, 10).y - 128);
     view.zoom(0.5);
     m_game->window().setView(view);
+
+    loadData(m_saveData);
 }
 
 void Scene_Levels::loadLevel(const std::string& filename)
@@ -137,6 +146,36 @@ void Scene_Levels::loadLevel(const std::string& filename)
     // Use the getPosition() function below to convert room-tile coords to game world coords
 }
 
+void Scene_Levels::loadData(const std::string& filename)
+{
+    std::ifstream fin(filename);
+    std::string text;
+
+    while (fin >> text)
+    {
+
+        if (text == "UnlockedLevels")
+        {
+            std::vector<bool> levels;
+
+            int level1;
+            int level2;
+            int level3;
+            int level4;
+            int level5;
+
+            fin >> level1 >> level2 >> level3 >> level4 >> level5;
+
+            levels.push_back(level1);
+            levels.push_back(level2);
+            levels.push_back(level3);
+            levels.push_back(level4);
+            levels.push_back(level5);
+
+            unlocked = std::move(levels);
+        }
+    }
+}
 Vec2 Scene_Levels::getPosition(int rx, int ry, int tx, int ty) const
 {
 
@@ -180,8 +219,11 @@ void Scene_Levels::sDoAction(const Action& action)
         {
             if (m_selectedMenuIndex < 5)
             {
-                m_game->changeScene("GAME", std::make_shared<Scene_Play>(m_game, m_levelPaths[m_selectedMenuIndex]), true);
-                m_game->assets().getSound("MusicTitle").stop();
+                if (unlocked[m_selectedMenuIndex] == true)
+                {
+                    m_game->changeScene("GAME", std::make_shared<Scene_Play>(m_game, m_levelPaths[m_selectedMenuIndex]), true);
+                    m_game->assets().getSound("MusicTitle").stop();
+                }
             }
 
             if (m_menuStrings[m_selectedMenuIndex] == "Back")

@@ -38,7 +38,9 @@ void Scene_Play::init(const std::string& levelPath)
 {
     loadLevel(levelPath);
 
-    for (int i = 0; i < 4; i++)
+    unlocked.push_back(true);
+
+    for (int i = 1; i < 5; i++)
     {
         unlocked.push_back(false);
     }
@@ -390,7 +392,7 @@ void Scene_Play::loadLevel(const std::string& filename)
     // Use the getPosition() function below to convert room-tile coords to game world coords
                                       
     spawnPlayer();
-    m_game->playSound("MusicLevel");
+    
 }
 
 void Scene_Play::saveData(const std::string& filename)
@@ -401,7 +403,7 @@ void Scene_Play::saveData(const std::string& filename)
 
     file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << m_player->getComponent<CHealth>().current << " " << (totalMoney + levelMoney) << std::endl;
 
-    file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << std::endl;
+    file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
 
     for (int i = 0; i < m_player->getComponent<CInventory>().currentSize; i++)
     {
@@ -491,13 +493,15 @@ void Scene_Play::loadData(const std::string& filename)
             int level2;
             int level3;
             int level4;
+            int level5;
 
-            fin >> level1 >> level2 >> level3 >> level4;
+            fin >> level1 >> level2 >> level3 >> level4 >> level5;
 
             levels.push_back(level1);
             levels.push_back(level2);
             levels.push_back(level3);
             levels.push_back(level4);
+            levels.push_back(level5);
 
             unlocked = std::move(levels);
         }
@@ -585,7 +589,7 @@ void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
 
             m_player->addComponent<CCooldown>(pWeapon.delay);
 
-            m_game->playSound("Slash");
+            m_game->playSound("Attack");
         }
         else if (pWeapon.ranged == true)
         {
@@ -1222,7 +1226,7 @@ void Scene_Play::sStatus()
                 {
                     e->destroy();
                     levelMoney += e->getComponent<CDamage>().damage;
-                    m_game->playSound("EnemyDie");
+                    m_game->playSound("EnemyHurt");
                 }
             }
             else
@@ -1232,7 +1236,7 @@ void Scene_Play::sStatus()
                     //e->destroy();
                     //spawnPlayer();
                     //onDie(); To be implemented later
-                    m_game->playSound("LinkDie");
+                    m_game->playSound("PlayerHurt");
                     onDie();
                 }
             }
@@ -1330,7 +1334,7 @@ void Scene_Play::sCollision()
             if (notFull == true)
             {
                 i->destroy();
-                m_game->playSound("GetItem");
+                m_game->playSound("PickupItem");
             }
         }
     }
@@ -1350,7 +1354,7 @@ void Scene_Play::sCollision()
                 // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
                 b->getComponent<CDamage>().damage = 0;
                 
-                m_game->playSound("EnemyHit");
+                m_game->playSound("EnemyHurt");
             }
         }
 
@@ -1366,7 +1370,7 @@ void Scene_Play::sCollision()
                 // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
                 b->getComponent<CDamage>().damage = 0;
 
-                m_game->playSound("EnemyHit");
+                m_game->playSound("EnemyHurt");
             }
         }
 
@@ -1378,7 +1382,7 @@ void Scene_Play::sCollision()
 
                 b->addComponent<CInvincibility>(30);
 
-                m_game->playSound("LinkHurt");
+                m_game->playSound("PlayerHurt");
             }
         }
     }
@@ -1390,6 +1394,23 @@ void Scene_Play::sCollision()
             if (Physics::GetOverlap(e, m_player).x > 0 && Physics::GetOverlap(e, m_player).y > 0 && e->hasComponent<CBoundingBox>())
             {
                 //save player data
+                if (m_levelPath == "level1.txt")
+                {
+                    unlocked[1] = true;
+                }
+                else if (m_levelPath == "level2.txt")
+                {
+                    unlocked[2] = true;
+                }
+                else if (m_levelPath == "level3.txt")
+                {
+                    unlocked[3] = true;
+                }
+                else if (m_levelPath == "level4.txt")
+                {
+                    unlocked[4] = true;
+                }
+
                 onEnd();
             }
         }
@@ -1438,7 +1459,7 @@ void Scene_Play::sCollision()
                 // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
                 b->getComponent<CDamage>().damage = 0;
 
-                m_game->playSound("EnemyHit");
+                m_game->playSound("EnemyHurt");
             }
         }
 
@@ -1456,7 +1477,7 @@ void Scene_Play::sCollision()
                 // Temporary solution to a wacky problem. Using removeComponent() didn't actually remove the component for whatever reason, so we just set damage to 0
                 b->getComponent<CDamage>().damage = 0;
 
-                m_game->playSound("EnemyHit");
+                m_game->playSound("EnemyHurt");
             }
         }
 
@@ -1468,7 +1489,7 @@ void Scene_Play::sCollision()
 
                 b->addComponent<CInvincibility>(30);
 
-                m_game->playSound("LinkHurt");
+                m_game->playSound("PlayerHurt");
             }
         }
     }
@@ -1481,7 +1502,7 @@ void Scene_Play::sCollision()
             {
                 b->getComponent<CHealth>().current -= 999;
 
-                m_game->playSound("LinkHurt");
+                m_game->playSound("PlayerHurt");
             }
         }
     }
@@ -1790,16 +1811,14 @@ void Scene_Play::onEnd()
     // - change scene to menu
 
     saveData(m_saveData);
-    m_game->assets().getSound("MusicLevel").stop();
-    m_game->playSound("MusicTitle");
+    m_game->assets().getSound("Music").stop();
     m_game->changeScene("VICTORY", std::make_shared<Scene_Victory>(m_game), true);
     
 }
 
 void Scene_Play::onDie()
 {
-    m_game->assets().getSound("MusicLevel").stop();
-    m_game->playSound("MusicTitle");
+    m_game->assets().getSound("Music").stop();
     m_game->changeScene("DEFEAT", std::make_shared<Scene_GameOver>(m_game), true);
 }
 

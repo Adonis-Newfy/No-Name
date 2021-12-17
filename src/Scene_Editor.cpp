@@ -272,7 +272,6 @@ void Scene_Editor::loadLevel(const std::string& filename)
     }
 
     spawnPlayer();
-    m_game->playSound("MusicLevel");
 }
 
 void Scene_Editor::saveLevel(const std::string& filename)
@@ -694,8 +693,7 @@ void Scene_Editor::onEnd()
     // - play the menu music
     // - change scene to menu
 
-    m_game->assets().getSound("MusicLevel").stop();
-    m_game->playSound("MusicTitle");
+
     m_game->changeScene("MENU", nullptr, true);
 
 }

@@ -34,6 +34,8 @@ void Scene_Victory::init()
     playerSprite->addComponent<CAnimation>(m_game->assets().getAnimation("SitMan"), true);
     playerSprite->addComponent<CTransform>(Vec2(608, 325));
 
+    m_game->playSound("Victory");
+
 }
 
 void Scene_Victory::update()
@@ -63,6 +65,7 @@ void Scene_Victory::sDoAction(const Action& action)
         {
             if (m_selectedMenuIndex == 0)
             {
+                m_game->playSound("Music");
                 m_game->changeScene("LEVELS", std::make_shared<Scene_Levels>(m_game), true);
             }
         }
