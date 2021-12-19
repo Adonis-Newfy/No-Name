@@ -23,6 +23,7 @@
 #include "Components.h"
 #include "Action.h"
 #include "Scene_Options.h"
+#include "Scene_Credits.h"
 
 
 Scene_Menu::Scene_Menu(GameEngine * gameEngine)
@@ -42,6 +43,7 @@ void Scene_Menu::init()
     m_menuStrings.push_back("Play");
     m_menuStrings.push_back("Options");
     m_menuStrings.push_back("Level Editor");
+    m_menuStrings.push_back("Credits");
     m_menuStrings.push_back("Quit");
 
     m_menuText.setFont(m_game->assets().getFont("Golem"));
@@ -74,7 +76,6 @@ void Scene_Menu::sDoAction(const Action& action)
             if (m_menuStrings[m_selectedMenuIndex] == "Play")
             {
                 m_game->changeScene("LEVELS", std::make_shared<Scene_Levels>(m_game));
-
             }
 
             if (m_menuStrings[m_selectedMenuIndex] == "Options")
@@ -85,6 +86,11 @@ void Scene_Menu::sDoAction(const Action& action)
             if (m_menuStrings[m_selectedMenuIndex] == "Level Editor")
             {
                 m_game->changeScene("EDITOR_SELECT", std::make_shared<Scene_Levels_Editor>(m_game));
+            }
+
+            if (m_menuStrings[m_selectedMenuIndex] == "Credits")
+            {
+                m_game->changeScene("CREDITS", std::make_shared<Scene_Credits>(m_game));
             }
 
             if (m_menuStrings[m_selectedMenuIndex] == "Quit")

@@ -292,7 +292,7 @@ void Scene_Editor::saveLevel(const std::string& filename)
                 int boxX = e->getComponent<CBoundingBox>().size.x;
                 int boxY = e->getComponent<CBoundingBox>().size.y;
                 int speed = m_playerConfig.SPEED;
-                int health = m_playerConfig.HEALTH;
+                int health = 10;
                 float gravity = m_playerConfig.GRAVITY;
                 float jump = m_playerConfig.JUMP;
 

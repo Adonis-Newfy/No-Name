@@ -37,11 +37,12 @@ protected:
     std::shared_ptr<Entity> m_player;
     std::string             m_levelPath;
     std::string             m_saveData = "savedata.txt";
-    std::string             m_parameters = "parameters.txt";
+    std::string             m_parameters = "options.txt";
     PlayerConfig            m_playerConfig;
     bool                    m_drawTextures = true;
     bool                    m_drawCollision = false;
     bool                    m_follow = false;
+    bool                    m_box = false;
 
     float                   m_difficulty = 1.0f;
 

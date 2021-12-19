@@ -36,29 +36,20 @@ Scene_Play::Scene_Play(GameEngine* game, const std::string& levelPath)
 
 void Scene_Play::init(const std::string& levelPath)
 {
+
     loadParameters(m_parameters);
 
-    loadLevel(levelPath);
-
-    unlocked.push_back(true);
-
-    for (int i = 1; i < 5; i++)
-    {
-        unlocked.push_back(false);
-    }
-
-    
-    // Register the actions required to play the game
-
+    //Register Default Keybinds
     registerAction(sf::Keyboard::Escape, "QUIT");
     registerAction(sf::Keyboard::P, "PAUSE");
     registerAction(sf::Keyboard::Y, "TOGGLE_FOLLOW");       // Toggle follow camera
+    registerAction(sf::Keyboard::B, "TOGGLE_BOX");          // Toggle follow camera
     registerAction(sf::Keyboard::T, "TOGGLE_TEXTURE");      // Toggle drawing (T)extures
     registerAction(sf::Keyboard::C, "TOGGLE_COLLISION");    // Toggle drawing (C)ollision Boxes
     registerAction(sf::Keyboard::W, "JUMP");                // Jump
     registerAction(sf::Keyboard::A, "MOVE_LEFT");           // Move Left
     registerAction(sf::Keyboard::D, "MOVE_RIGHT");          // Move Right    
-    
+
     registerAction(sf::Keyboard::Space, "ATTACK");          // Attack
     registerAction(sf::Keyboard::Tab, "SWAP");              // Swap Currently Equipped Weapon
     registerAction(sf::Keyboard::V, "TEST");                // For testing purposes, prints a value to console.
@@ -69,6 +60,18 @@ void Scene_Play::init(const std::string& levelPath)
     registerAction(sf::Keyboard::Left, "MENU_NEGATIVE");       // NEW: Select menu option
 
     registerAction(sf::Keyboard::I, "OPEN_INVENTORY");      // NEW: Open Inventory
+
+    loadLevel(levelPath);
+
+    unlocked.push_back(true);
+
+    for (int i = 1; i < 5; i++)
+    {
+        unlocked.push_back(false);
+    }
+
+
+    
 
     m_inventoryStrings.push_back("Health Potion");
     m_inventoryStrings.push_back("Defense Potion");
@@ -83,11 +86,15 @@ void Scene_Play::init(const std::string& levelPath)
     m_items.push_back(IP);
     m_items.push_back(SP);
 
+    loadParameters(m_parameters);
+
     loadData(m_saveData);
 
     std::srand(static_cast<unsigned int>(std::time(NULL)));
 
     m_game->window().setView(m_game->window().getDefaultView());
+
+    std::cout << m_difficulty << std::endl;
 }
 
 
@@ -403,10 +410,10 @@ void Scene_Play::saveData(const std::string& filename)
 
     auto weapons = m_player->getComponent<CWeapons>().unlocked;
 
-file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << float(m_player->getComponent<CHealth>().current) / float(m_player->getComponent<CHealth>().max)
-<< " " << (totalMoney + levelMoney) << std::endl;
+    file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << float(m_player->getComponent<CHealth>().current) / float(m_player->getComponent<CHealth>().max)
+    << " " << (totalMoney + levelMoney) << std::endl;
 
-file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
+    file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
 
 for (int i = 0; i < m_player->getComponent<CInventory>().currentSize; i++)
 {
@@ -451,15 +458,20 @@ void Scene_Play::loadParameters(const std::string& filename)
     std::ifstream fin(filename);
     std::string text;
 
+    std::string actionToBind;
+    int actionKeyCode;
+
     while (fin >> text)
     {
         if (text == "Difficulty")
         {
             fin >> m_difficulty;
         }
-        if (text == "Keybinds")
+        if (text == "Keybind")
         {
-            //Do keybind stuff here
+            fin >> actionToBind >> actionKeyCode;
+
+            registerAction(actionKeyCode, actionToBind);
         }
     }
 }
@@ -840,6 +852,7 @@ void Scene_Play::sDoAction(const Action& action)
         else if (action.name() == "QUIT") { onEnd(); }
         else if (action.name() == "TOGGLE_FOLLOW") { m_follow = !m_follow; } /*if (!m_follow) { sf::View view = m_game->window().getView(); view.zoom(0.8f); m_game->window().setView(view); }
         else { sf::View view = m_game->window().getDefaultView(); m_game->window().setView(view); }*/
+        else if (action.name() == "TOGGLE_BOX") { m_box = !m_box; }
         else if (action.name() == "TOGGLE_TEXTURE") { m_drawTextures = !m_drawTextures; }
         else if (action.name() == "TOGGLE_COLLISION") { m_drawCollision = !m_drawCollision; }
         else if (action.name() == "JUMP") { m_player->getComponent<CInput>().up = true; }
@@ -1893,6 +1906,34 @@ void Scene_Play::sCamera()
     {
         view.setCenter(pPos.x, pPos.y);
     }
+    else if (m_box)
+    {
+        float PositiveBoundaryX = view.getCenter().x + 300.0f;
+        float PositiveBoundaryY = view.getCenter().y + 200.0f;
+
+        float NegativeBoundaryX = view.getCenter().x - 300.0f;
+        float NegativeBoundaryY = view.getCenter().y - 200.0f;
+
+        if (pPos.x > PositiveBoundaryX)
+        {
+            view.setCenter(view.getCenter().x + (pPos.x - PositiveBoundaryX), view.getCenter().y);
+        }
+
+        if (pPos.x < NegativeBoundaryX)
+        {
+            view.setCenter(view.getCenter().x + (pPos.x - NegativeBoundaryX), view.getCenter().y);
+        }
+
+        if (pPos.y > PositiveBoundaryY)
+        {
+            view.setCenter(view.getCenter().x, view.getCenter().y + (pPos.y - PositiveBoundaryY));
+        }
+
+        if (pPos.y < NegativeBoundaryY)
+        {
+            view.setCenter(view.getCenter().x, view.getCenter().y + (pPos.y - NegativeBoundaryY));
+        }
+    }
     else
     {
         // calcluate view for room-based camera
@@ -1958,13 +1999,8 @@ void Scene_Play::sRender()
 
         // draw background
         Vec2 focal_point_speed = m_player->getComponent<CTransform>().velocity;
-        Vec2 focal_point_pos = m_player->getComponent<CTransform>().pos;
-
-        if (!m_follow)
-        {
-            //focal_point_speed = Vec2(0.0f, 0.0f);
-            focal_point_pos = Vec2(0.0f, 0.0f);
-        }
+        Vec2 focal_point_pos = Vec2(m_game->window().getView().getCenter().x, m_game->window().getView().getCenter().y);
+        //Vec2 focal_point_pos = m_player->getComponent<CTransform>().pos;
 
         sf::Texture background(m_game->assets().getTexture("TexBackL1"));
         sf::Sprite backgroundSprite(background);
