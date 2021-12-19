@@ -403,47 +403,47 @@ void Scene_Play::saveData(const std::string& filename)
 
     auto weapons = m_player->getComponent<CWeapons>().unlocked;
 
-    file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << float(float(m_player->getComponent<CHealth>().current) / float(m_player->getComponent<CHealth>().max))
-        << " " << (totalMoney + levelMoney) << std::endl;
+file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << float(m_player->getComponent<CHealth>().current) / float(m_player->getComponent<CHealth>().max)
+<< " " << (totalMoney + levelMoney) << std::endl;
 
-    file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
+file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
 
-    for (int i = 0; i < m_player->getComponent<CInventory>().currentSize; i++)
+for (int i = 0; i < m_player->getComponent<CInventory>().currentSize; i++)
+{
+    int item = 0;
+    bool flag = false;
+
+    if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[0]->itemID)
     {
-        int item = 0;
-        bool flag = false;
-
-        if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[0]->itemID)
-        {
-            item = 0;
-            flag = true;
-        }
-
-        else if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[1]->itemID)
-        {
-            item = 1;
-            flag = true;
-        }
-
-        else if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[2]->itemID)
-        {
-            item = 2;
-            flag = true;
-        }
-
-        if (flag == true)
-        {
-            file << "Inventory " << item << std::endl;
-            flag = false;
-        }
-        
+        item = 0;
+        flag = true;
     }
 
-    /*
-    * BasicData Base War Ran Mag HP Gold
-    * UnlockedLevels One Two Three Final
-    * Inventory ............................ 
-    */
+    else if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[1]->itemID)
+    {
+        item = 1;
+        flag = true;
+    }
+
+    else if (m_player->getComponent<CInventory>().items[i]->itemID == m_items[2]->itemID)
+    {
+        item = 2;
+        flag = true;
+    }
+
+    if (flag == true)
+    {
+        file << "Inventory " << item << std::endl;
+        flag = false;
+    }
+
+}
+
+/*
+* BasicData Base War Ran Mag HP Gold
+* UnlockedLevels One Two Three Final
+* Inventory ............................
+*/
 }
 
 void Scene_Play::loadParameters(const std::string& filename)
@@ -501,7 +501,14 @@ void Scene_Play::loadData(const std::string& filename)
                 m_player->getComponent<CWeapons>().unlockWeapon(3);
             }
 
-            m_player->getComponent<CHealth>().current = m_player->getComponent<CHealth>().max * hp;
+            if (int((m_player->getComponent<CHealth>().max) * hp) <= 0)
+            {
+                m_player->getComponent<CHealth>().current = 1;
+            }
+            else
+            {
+                m_player->getComponent<CHealth>().current = (m_player->getComponent<CHealth>().max) * hp;
+            }
 
             totalMoney = money;
         }
@@ -831,7 +838,8 @@ void Scene_Play::sDoAction(const Action& action)
         
              if (action.name() == "PAUSE") { setPaused(!m_paused); }
         else if (action.name() == "QUIT") { onEnd(); }
-        else if (action.name() == "TOGGLE_FOLLOW") { m_follow = !m_follow; }
+        else if (action.name() == "TOGGLE_FOLLOW") { m_follow = !m_follow; } /*if (!m_follow) { sf::View view = m_game->window().getView(); view.zoom(0.8f); m_game->window().setView(view); }
+        else { sf::View view = m_game->window().getDefaultView(); m_game->window().setView(view); }*/
         else if (action.name() == "TOGGLE_TEXTURE") { m_drawTextures = !m_drawTextures; }
         else if (action.name() == "TOGGLE_COLLISION") { m_drawCollision = !m_drawCollision; }
         else if (action.name() == "JUMP") { m_player->getComponent<CInput>().up = true; }
@@ -1006,7 +1014,10 @@ void Scene_Play::sAI()
                 {
                     if (abs(e->getComponent<CGravity>().gravity) > 0)
                     {
-                        e->getComponent<CTransform>().velocity.x += steer.x;
+                        int multiplier = 1;
+                        if (steer.x < 0)
+                            multiplier = -1;
+                        e->getComponent<CTransform>().velocity.x += (multiplier * sqrtf(exp2f(steer.x) + exp2f(steer.y)));
                     }
                     else
                     {
@@ -1345,6 +1356,7 @@ void Scene_Play::sCollision()
 
                     b->getComponent<CTransform>().pos.y += Physics::GetOverlap(e, b).y + 5; // + 5 to deal with a bug where the player was sticking to platforms that were moving down
                     b->getComponent<CTransform>().velocity.y = 0;
+
 
                     if (b->hasComponent<CInput>())
                     {
@@ -1941,14 +1953,150 @@ void Scene_Play::sRender()
     // draw all Entity textures / animations
     if (m_drawTextures)
     {
+
+
+
         // draw background
         Vec2 focal_point_speed = m_player->getComponent<CTransform>().velocity;
-        float layer_difference = 1;
+        Vec2 focal_point_pos = m_player->getComponent<CTransform>().pos;
 
-        sf::Texture background(m_game->assets().getTexture("TexBackground"));
+        if (!m_follow)
+        {
+            //focal_point_speed = Vec2(0.0f, 0.0f);
+            focal_point_pos = Vec2(0.0f, 0.0f);
+        }
+
+        sf::Texture background(m_game->assets().getTexture("TexBackL1"));
         sf::Sprite backgroundSprite(background);
-        backgroundSprite.setPosition(m_game->window().getView().getCenter().x - 640, m_game->window().getView().getCenter().y - 384);
+        backgroundSprite.setPosition(m_game->window().getView().getCenter().x - 640 - (0.10f * focal_point_pos.x), m_game->window().getView().getCenter().y - 384);
+
+
+        sf::Texture background2(m_game->assets().getTexture("TexBackL1"));
+        sf::Sprite backgroundSprite2(background2);
+        backgroundSprite2.setPosition(m_game->window().getView().getCenter().x - 640 + (m_game->window().getView().getSize().x) - 0.10f * focal_point_pos.x, m_game->window().getView().getCenter().y - 384);
+
+        sf::Texture background3(m_game->assets().getTexture("TexBackL2"));
+        sf::Sprite backgroundSprite3(background3);
+        backgroundSprite3.setPosition(m_game->window().getView().getCenter().x - 640 - (0.20f * focal_point_pos.x), m_game->window().getView().getCenter().y - 384);
+
+
+        sf::Texture background4(m_game->assets().getTexture("TexBackL2"));
+        sf::Sprite backgroundSprite4(background4);
+        backgroundSprite4.setPosition(m_game->window().getView().getCenter().x - 640 + (m_game->window().getView().getSize().x) - 0.20f * focal_point_pos.x, m_game->window().getView().getCenter().y - 384);
+
+        sf::Texture background5(m_game->assets().getTexture("TexBackL3"));
+        sf::Sprite backgroundSprite5(background5);
+        backgroundSprite5.setPosition(m_game->window().getView().getCenter().x - 640 - (0.30f * focal_point_pos.x), m_game->window().getView().getCenter().y - 384);
+
+        sf::Texture background6(m_game->assets().getTexture("TexBackL3"));
+        sf::Sprite backgroundSprite6(background6);
+        backgroundSprite6.setPosition(m_game->window().getView().getCenter().x - 640 + (m_game->window().getView().getSize().x) - 0.30f * focal_point_pos.x, m_game->window().getView().getCenter().y - 384);
+
+        sf::Texture background7(m_game->assets().getTexture("TexBackL4"));
+        sf::Sprite backgroundSprite7(background7);
+        backgroundSprite7.setPosition(m_game->window().getView().getCenter().x - 640 - (0.40f * focal_point_pos.x), m_game->window().getView().getCenter().y - 384);
+
+        sf::Texture background8(m_game->assets().getTexture("TexBackL4"));
+        sf::Sprite backgroundSprite8(background8);
+        backgroundSprite8.setPosition(m_game->window().getView().getCenter().x - 640 + (m_game->window().getView().getSize().x) - 0.40f * focal_point_pos.x, m_game->window().getView().getCenter().y - 384);
+
+        float differencebg1 = backgroundSprite.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg2 = backgroundSprite2.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg3 = backgroundSprite3.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg4 = backgroundSprite4.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg5 = backgroundSprite5.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg6 = backgroundSprite6.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg7 = backgroundSprite7.getPosition().x - m_game->window().getView().getCenter().x;
+        float differencebg8 = backgroundSprite8.getPosition().x - m_game->window().getView().getCenter().x;
+
+        if (fabs(differencebg1) > (background.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg1 < 0))
+        {
+            backgroundSprite.setPosition(backgroundSprite.getPosition().x + (2.0f * background.getSize().x), backgroundSprite.getPosition().y);
+        }
+
+        else if (fabs(differencebg1) > (m_game->window().getView().getSize().x / 2) && (differencebg1 > 0))
+        {
+            backgroundSprite.setPosition(backgroundSprite.getPosition().x - (2.0f * background.getSize().x), backgroundSprite.getPosition().y);
+        }
+
+        if (fabs(differencebg2) > (m_game->window().getView().getSize().x / 2) && (differencebg2 > 0))
+        {
+            backgroundSprite2.setPosition(backgroundSprite2.getPosition().x - (2.0f * background2.getSize().x), backgroundSprite2.getPosition().y);
+        }
+
+        else if (fabs(differencebg2) > (background2.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg2 < 0))
+        {
+            backgroundSprite2.setPosition(backgroundSprite2.getPosition().x + (2.0f * background2.getSize().x), backgroundSprite2.getPosition().y);
+        }
+
+        if (fabs(differencebg3) > (background3.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg3 < 0))
+        {
+            backgroundSprite3.setPosition(backgroundSprite3.getPosition().x + (2.0f * background3.getSize().x), backgroundSprite3.getPosition().y);
+        }
+
+        else if (fabs(differencebg3) > (m_game->window().getView().getSize().x / 2) && (differencebg3 > 0))
+        {
+            backgroundSprite3.setPosition(backgroundSprite3.getPosition().x - (2.0f * background3.getSize().x), backgroundSprite3.getPosition().y);
+        }
+
+        if (fabs(differencebg4) > (m_game->window().getView().getSize().x / 2) && (differencebg4 > 0))
+        {
+            backgroundSprite4.setPosition(backgroundSprite4.getPosition().x - (2.0f * background4.getSize().x), backgroundSprite4.getPosition().y);
+        }
+
+        else if (fabs(differencebg4) > (background4.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg4 < 0))
+        {
+            backgroundSprite4.setPosition(backgroundSprite4.getPosition().x + (2.0f * background4.getSize().x), backgroundSprite4.getPosition().y);
+        }
+
+        if (fabs(differencebg5) > (background5.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg5 < 0))
+        {
+            backgroundSprite5.setPosition(backgroundSprite5.getPosition().x + (2.0f * background5.getSize().x), backgroundSprite5.getPosition().y);
+        }
+
+        else if (fabs(differencebg5) > (m_game->window().getView().getSize().x / 2) && (differencebg5 > 0))
+        {
+            backgroundSprite5.setPosition(backgroundSprite5.getPosition().x - (2.0f * background5.getSize().x), backgroundSprite5.getPosition().y);
+        }
+
+        if (fabs(differencebg6) > (m_game->window().getView().getSize().x / 2) && (differencebg6 > 0))
+        {
+            backgroundSprite6.setPosition(backgroundSprite6.getPosition().x - (2.0f * background6.getSize().x), backgroundSprite6.getPosition().y);
+        }
+
+        else if (fabs(differencebg6) > (background6.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg6 < 0))
+        {
+            backgroundSprite6.setPosition(backgroundSprite6.getPosition().x + (2.0f * background6.getSize().x), backgroundSprite6.getPosition().y);
+        }
+
+        if (fabs(differencebg7) > (background7.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg7 < 0))
+        {
+            backgroundSprite7.setPosition(backgroundSprite7.getPosition().x + (2.0f * background7.getSize().x), backgroundSprite7.getPosition().y);
+        }
+
+        else if (fabs(differencebg7) > (m_game->window().getView().getSize().x / 2) && (differencebg7 > 0))
+        {
+            backgroundSprite7.setPosition(backgroundSprite7.getPosition().x - (2.0f * background7.getSize().x), backgroundSprite7.getPosition().y);
+        }
+
+        if (fabs(differencebg8) > (m_game->window().getView().getSize().x / 2) && (differencebg8 > 0))
+        {
+            backgroundSprite8.setPosition(backgroundSprite8.getPosition().x - (2.0f * background8.getSize().x), backgroundSprite8.getPosition().y);
+        }
+
+        else if (fabs(differencebg8) > (background8.getSize().x + (m_game->window().getView().getSize().x / 2)) && (differencebg8 < 0))
+        {
+            backgroundSprite8.setPosition(backgroundSprite8.getPosition().x + (2.0f * background8.getSize().x), backgroundSprite8.getPosition().y);
+        }
+
         m_game->window().draw(backgroundSprite);
+        m_game->window().draw(backgroundSprite2);
+        m_game->window().draw(backgroundSprite3);
+        m_game->window().draw(backgroundSprite4);
+        m_game->window().draw(backgroundSprite5);
+        m_game->window().draw(backgroundSprite6);
+        m_game->window().draw(backgroundSprite7);
+        m_game->window().draw(backgroundSprite8);
 
 
         // Draw foreground decs
