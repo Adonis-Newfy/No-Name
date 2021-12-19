@@ -260,6 +260,7 @@ public:
 
     int maxTimer = 240;
     int currentTimer = 0;
+    bool mechanicOccured = false;
 
     CBoss() {}
 

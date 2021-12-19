@@ -25,7 +25,7 @@ public:
 class Basic : public Weapon
 {
 public:
-	Basic(const int& id = 1, const std::string& t = "Basic", const std::string& a = "BSword", const int& life = 10, const int& d = 1, const int& l = 0, const bool& r = false) 
+	Basic(const int& id = 1, const std::string& t = "Basic", const std::string& a = "BSword", const int& life = 10, const int& d = 1, const int& l = 10, const bool& r = false) 
 		: Weapon(id, t, a, life, d, l, r) {}
 
 	//Basic Information
@@ -65,7 +65,7 @@ public:
 class Ranger : public Weapon
 {
 public:
-	Ranger(const int& id = 3, const std::string& t = "Ranger", const std::string& a = "Arrow", const int& life = 10, const int& d = 1, const int& l = 0, const bool& r = true) 
+	Ranger(const int& id = 3, const std::string& t = "Ranger", const std::string& a = "Arrow", const int& life = 10, const int& d = 1, const int& l = 30, const bool& r = true) 
 		: Weapon(id, t, a, life, d, l, r) {}
 
 	//Basic Information

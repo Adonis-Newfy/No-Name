@@ -36,6 +36,8 @@ Scene_Play::Scene_Play(GameEngine* game, const std::string& levelPath)
 
 void Scene_Play::init(const std::string& levelPath)
 {
+    loadParameters(m_parameters);
+
     loadLevel(levelPath);
 
     unlocked.push_back(true);
@@ -87,7 +89,8 @@ void Scene_Play::init(const std::string& levelPath)
 
     m_game->window().setView(m_game->window().getDefaultView());
 }
-                                      
+
+
 void Scene_Play::loadLevel(const std::string& filename)
 {
     m_entityManager = EntityManager();
@@ -97,8 +100,6 @@ void Scene_Play::loadLevel(const std::string& filename)
     std::string text = "";
 
     int count = 1;
-
-
 
     while (fin >> text)
     {
@@ -122,7 +123,7 @@ void Scene_Play::loadLevel(const std::string& filename)
             m_playerConfig.CX = boxX;
             m_playerConfig.CY = boxY;
             m_playerConfig.SPEED = speed;
-            m_playerConfig.HEALTH = health;
+            m_playerConfig.HEALTH = health / m_difficulty;
             m_playerConfig.GRAVITY = gravity;
             m_playerConfig.JUMP = jump;
 
@@ -281,10 +282,11 @@ void Scene_Play::loadLevel(const std::string& filename)
                 npc->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
                 npc->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
                 npc->addComponent<CHealth>(maxHealth, maxHealth);
-                npc->addComponent<CDamage>(damage);
+                npc->addComponent<CDamage>(damage * m_difficulty);
                 npc->addComponent<CPatrol>(patrolPositions, speed);
                 npc->addComponent<CGravity>(gravity);
             }
+
             if (AI == "Follow")
             {
                 float speed;
@@ -296,7 +298,7 @@ void Scene_Play::loadLevel(const std::string& filename)
                 npc->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
                 npc->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
                 npc->addComponent<CHealth>(maxHealth, maxHealth);
-                npc->addComponent<CDamage>(damage);
+                npc->addComponent<CDamage>(damage * m_difficulty);
                 npc->addComponent<CFollowPlayer>(getPosition(roomX, roomY, tileX, tileY), speed);
                 npc->addComponent<CGravity>(gravity);
             }
@@ -308,7 +310,7 @@ void Scene_Play::loadLevel(const std::string& filename)
                 npc->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
                 npc->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
                 npc->addComponent<CHealth>(maxHealth, maxHealth);
-                npc->addComponent<CDamage>(damage);
+                npc->addComponent<CDamage>(damage * m_difficulty);
                 npc->addComponent<CBoss>();
                 npc->addComponent<CGravity>(gravity);
             }
@@ -337,7 +339,7 @@ void Scene_Play::loadLevel(const std::string& filename)
                 npc->addComponent<CAnimation>(m_game->assets().getAnimation(animationName), true);
                 npc->addComponent<CTransform>(getPosition(roomX, roomY, tileX, tileY));
                 npc->addComponent<CBoundingBox>(m_game->assets().getAnimation(animationName).getSize(), blockM, blockV);
-                npc->addComponent<CDamage>(damage);
+                npc->addComponent<CDamage>(damage * m_difficulty);
                 npc->addComponent<CPatrol>(patrolPositions, speed);
                 npc->addComponent<CGravity>(gravity);
             }
@@ -401,7 +403,8 @@ void Scene_Play::saveData(const std::string& filename)
 
     auto weapons = m_player->getComponent<CWeapons>().unlocked;
 
-    file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << m_player->getComponent<CHealth>().current << " " << (totalMoney + levelMoney) << std::endl;
+    file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << float(float(m_player->getComponent<CHealth>().current) / float(m_player->getComponent<CHealth>().max))
+        << " " << (totalMoney + levelMoney) << std::endl;
 
     file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
 
@@ -443,6 +446,24 @@ void Scene_Play::saveData(const std::string& filename)
     */
 }
 
+void Scene_Play::loadParameters(const std::string& filename)
+{
+    std::ifstream fin(filename);
+    std::string text;
+
+    while (fin >> text)
+    {
+        if (text == "Difficulty")
+        {
+            fin >> m_difficulty;
+        }
+        if (text == "Keybinds")
+        {
+            //Do keybind stuff here
+        }
+    }
+}
+
 void Scene_Play::loadData(const std::string& filename)
 {
     std::ifstream fin(filename);
@@ -457,7 +478,7 @@ void Scene_Play::loadData(const std::string& filename)
             int unlockedR;
             int unlockedM;
 
-            int hp;
+            float hp;
 
             int money;
 
@@ -480,7 +501,7 @@ void Scene_Play::loadData(const std::string& filename)
                 m_player->getComponent<CWeapons>().unlockWeapon(3);
             }
 
-            m_player->getComponent<CHealth>().current = hp;
+            m_player->getComponent<CHealth>().current = m_player->getComponent<CHealth>().max * hp;
 
             totalMoney = money;
         }
@@ -540,7 +561,7 @@ void Scene_Play::spawnPlayer()
     m_player->addComponent<CTransform>(Vec2(m_playerConfig.X, m_playerConfig.Y));
     m_player->addComponent<CAnimation>(m_game->assets().getAnimation("StandDown"), true);
     m_player->addComponent<CBoundingBox>(Vec2(m_playerConfig.CX, m_playerConfig.CY), true, false);
-    m_player->addComponent<CHealth>(m_playerConfig.HEALTH, m_playerConfig.HEALTH - 1);
+    m_player->addComponent<CHealth>(m_playerConfig.HEALTH, m_playerConfig.HEALTH);
     m_player->addComponent<CInput>();
     m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
     m_player->addComponent<CState>();
@@ -585,7 +606,7 @@ void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
             weapon->addComponent<CAnimation>(m_game->assets().getAnimation(pWeapon.animationName), true);
             weapon->addComponent<CBoundingBox>(weapon->getComponent<CAnimation>().animation.getSize());
             weapon->addComponent<CLifeSpan>(10, m_currentFrame);
-            weapon->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier);
+            weapon->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier / m_difficulty);
 
             m_player->addComponent<CCooldown>(pWeapon.delay);
 
@@ -601,7 +622,7 @@ void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
             bullet->addComponent<CTransform>(bulletPos);
             bullet->addComponent<CBoundingBox>(bullet->getComponent<CAnimation>().animation.getSize());
             bullet->addComponent<CLifeSpan>(60, m_currentFrame);
-            bullet->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier);
+            bullet->addComponent<CDamage>(pWeapon.damage * m_player->getComponent<CBuffed>().multiplier / m_difficulty);
 
 
             if (entity->getComponent<CTransform>().scale.x == 1)
@@ -655,7 +676,7 @@ void Scene_Play::update()
         sCollision();
         sAnimation();
         sCamera();
-        // sLighting();
+        //sLighting();
         // add dim shader to screen for when paused
     }
     
@@ -887,7 +908,7 @@ void Scene_Play::sAI()
 
     for (auto e : m_entityManager.getEntities())
     {
-        if (e->tag() == "npc" || e->tag() == "tile" || e->tag() == "bossarm")
+        if (e->tag() == "npc" || e->tag() == "tile" || e->tag() == "bossarm" || e->tag() == "enemybullet")
         {
             if (e->hasComponent<CGravity>())
             {
@@ -1000,10 +1021,15 @@ void Scene_Play::sAI()
 
                 for (auto b : m_entityManager.getEntities())
                 {
-                    if (b->hasComponent<CBoundingBox>() && b->getComponent<CBoundingBox>().blockVision == true)
+                    if (b->hasComponent<CBoundingBox>() && (b->getComponent<CBoundingBox>().blockVision == true))
                     {
                         if (Physics::EntityIntersect(m_player->getComponent<CTransform>().pos, e->getComponent<CTransform>().pos, b))
                         {
+                            if (e->tag() == "enemybullet")
+                            {
+                                break;
+                            }
+
                             Vec2 desired = e->getComponent<CFollowPlayer>().home - e->getComponent<CTransform>().pos;
                             if (abs(desired.x) > 0 && abs(desired.y) > 0)
                             {
@@ -1174,6 +1200,7 @@ void Scene_Play::sStatus()
                 {
                     m_player->getComponent<CInput>().attack = false;
                 }
+
                 e->destroy();
 
             }   
@@ -1224,6 +1251,14 @@ void Scene_Play::sStatus()
             {
                 if (e->getComponent<CHealth>().current <= 0)
                 {
+                    if (e->tag() == "boss")
+                    {
+                        for (auto b : m_entityManager.getEntities("bossarm"))
+                        {
+                            b->destroy();
+                            levelMoney += b->getComponent<CDamage>().damage;
+                        }
+                    }
                     e->destroy();
                     levelMoney += e->getComponent<CDamage>().damage;
                     m_game->playSound("EnemyHurt");
@@ -1233,6 +1268,7 @@ void Scene_Play::sStatus()
             {
                 if (e->getComponent<CHealth>().current <= 0)
                 {
+
                     //e->destroy();
                     //spawnPlayer();
                     //onDie(); To be implemented later
@@ -1241,7 +1277,44 @@ void Scene_Play::sStatus()
                 }
             }
         }
+
+        if (e->hasComponent<CBoss>())
+        {
+            if ((e->getComponent<CHealth>().current <= e->getComponent<CHealth>().max / 1))
+            {
+                e->getComponent<CBoss>().mechanicOccured = true;
+                e->getComponent<CBoss>().currentTimer++;
+
+                if (e->getComponent<CBoss>().currentTimer >= e->getComponent<CBoss>().maxTimer)
+                {
+                    sBossMechanic(e);
+                    e->getComponent<CBoss>().currentTimer = 0;
+                }
+                
+            }
+        }
     }
+}
+
+void Scene_Play::sBossMechanic(std::shared_ptr<Entity> entity)
+{
+    auto bullet = m_entityManager.addEntity("enemybullet");
+
+    bullet->addComponent<CAnimation>(m_game->assets().getAnimation("Fireball"), true);
+    bullet->addComponent<CTransform>(entity->getComponent<CTransform>().pos + Vec2(32, 0));
+    bullet->addComponent<CBoundingBox>(bullet->getComponent<CAnimation>().animation.getSize(), 0, 0);
+    bullet->addComponent<CLifeSpan>(200, m_currentFrame);
+    bullet->addComponent<CDamage>(2 * m_difficulty);
+    bullet->addComponent<CFollowPlayer>(entity->getComponent<CTransform>().pos, 2);
+
+    auto bullet2 = m_entityManager.addEntity("enemybullet");
+
+    bullet2->addComponent<CAnimation>(m_game->assets().getAnimation("Fireball"), true);
+    bullet2->addComponent<CTransform>(entity->getComponent<CTransform>().pos - Vec2(32, 0));
+    bullet2->addComponent<CBoundingBox>(bullet->getComponent<CAnimation>().animation.getSize(), 0, 0);
+    bullet2->addComponent<CLifeSpan>(200, m_currentFrame);
+    bullet2->addComponent<CDamage>(2 * m_difficulty);
+    bullet2->addComponent<CFollowPlayer>(entity->getComponent<CTransform>().pos, 2);
 }
 
 void Scene_Play::sCollision()
@@ -1259,7 +1332,7 @@ void Scene_Play::sCollision()
     {
         for (auto b : m_entityManager.getEntities())
         {
-            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile" && b->tag() != "dec" && b->tag() != "bossarm")
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && e->hasComponent<CBoundingBox>() && b->tag() != "tile" && b->tag() != "dec" && b->tag() != "bossarm" && b->tag() != "enemybullet")
             { 
                 //if movement came from below
                 if (Physics::GetPreviousOverlap(e, b).x > 0 && b->getComponent<CTransform>().pos.y > e->getComponent<CTransform>().pos.y)
@@ -1362,7 +1435,10 @@ void Scene_Play::sCollision()
         {
             if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>())
             {
-                b->destroy();
+                if (b->getComponent<CAnimation>().animation.getName() == "Arrow")
+                {
+                    b->destroy();
+                }
 
                 // Deal damage to enemy
                 e->getComponent<CHealth>().current -= b->getComponent<CDamage>().damage;
@@ -1503,6 +1579,38 @@ void Scene_Play::sCollision()
                 b->getComponent<CHealth>().current -= 999;
 
                 m_game->playSound("PlayerHurt");
+            }
+        }
+    }
+
+    for (auto e : m_entityManager.getEntities("enemybullet"))
+    {
+        for (auto b : m_entityManager.getEntities("player"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && !m_player->hasComponent<CInvincibility>())
+            {
+                b->getComponent<CHealth>().current -= e->getComponent<CDamage>().damage;
+
+                b->addComponent<CInvincibility>(30);
+
+                m_game->playSound("PlayerHurt");
+            }
+        }
+
+        for (auto b : m_entityManager.getEntities("tile"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && !m_player->hasComponent<CInvincibility>())
+            {
+                b->destroy();
+                e->destroy();
+            }
+        }
+
+        for (auto b : m_entityManager.getEntities("weapon"))
+        {
+            if (Physics::GetOverlap(e, b).x > 0 && Physics::GetOverlap(e, b).y > 0 && b->hasComponent<CBoundingBox>() && !m_player->hasComponent<CInvincibility>())
+            {
+                e->destroy();
             }
         }
     }
@@ -1834,6 +1942,9 @@ void Scene_Play::sRender()
     if (m_drawTextures)
     {
         // draw background
+        Vec2 focal_point_speed = m_player->getComponent<CTransform>().velocity;
+        float layer_difference = 1;
+
         sf::Texture background(m_game->assets().getTexture("TexBackground"));
         sf::Sprite backgroundSprite(background);
         backgroundSprite.setPosition(m_game->window().getView().getCenter().x - 640, m_game->window().getView().getCenter().y - 384);
@@ -1950,6 +2061,28 @@ void Scene_Play::sRender()
                     size.x *= ratio;
                     rect.setSize({ size.x , size.y });
                     rect.setFillColor(sf::Color(255, 255, 0));
+                    rect.setOutlineThickness(0);
+                    m_game->window().draw(rect);
+                }
+            }
+
+            if (e->hasComponent<CBoss>())
+            {
+                if (e->getComponent<CBoss>().mechanicOccured == true)
+                {
+                    auto& c = e->getComponent<CBoss>();
+                    Vec2 size(64, 6);
+                    sf::RectangleShape rect({ size.x, size.y });
+                    rect.setPosition(transform.pos.x - 32, transform.pos.y - 64);
+                    rect.setFillColor(sf::Color(96, 96, 96));
+                    rect.setOutlineColor(sf::Color::Black);
+                    rect.setOutlineThickness(2);
+                    m_game->window().draw(rect);
+
+                    float ratio = (float)(c.currentTimer) / c.maxTimer;
+                    size.x *= ratio;
+                    rect.setSize({ size.x , size.y });
+                    rect.setFillColor(sf::Color(148, 0, 211));
                     rect.setOutlineThickness(0);
                     m_game->window().draw(rect);
                 }

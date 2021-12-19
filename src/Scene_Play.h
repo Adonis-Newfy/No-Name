@@ -37,10 +37,13 @@ protected:
     std::shared_ptr<Entity> m_player;
     std::string             m_levelPath;
     std::string             m_saveData = "savedata.txt";
+    std::string             m_parameters = "parameters.txt";
     PlayerConfig            m_playerConfig;
     bool                    m_drawTextures = true;
     bool                    m_drawCollision = false;
     bool                    m_follow = false;
+
+    float                   m_difficulty = 1.0f;
 
     std::vector<Vec2>       BlackTiles;
 
@@ -60,6 +63,7 @@ protected:
 
     void saveData(const std::string & filename);
     void loadData(const std::string & filename);
+    void loadParameters(const std::string & filename);
 
     void onEnd();
     void onDie();
@@ -79,6 +83,8 @@ protected:
     void sTestValue();
     void sCamera();
     void sLighting();
+
+    void sBossMechanic(std::shared_ptr<Entity> entity);
     
 
 public:
