@@ -56,6 +56,9 @@ protected:
     size_t                      m_selectedMenuIndex = 0;    // NEW
     sf::Text                    m_menuText;                 // NEW
 
+    int                         m_totalMoney = 0;
+    int                         m_levelMoney = 0;
+
     std::vector<std::shared_ptr<Item>> m_items;
     
     void init(const std::string & levelPath);
@@ -68,6 +71,7 @@ protected:
 
     void onEnd();
     void onDie();
+    void onCredits();
     void update();
     void spawnPlayer();
     void spawnWeapon(std::shared_ptr<Entity> entity);

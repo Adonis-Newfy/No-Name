@@ -19,6 +19,28 @@ Scene_Credits::Scene_Credits(GameEngine* gameEngine)
 
 void Scene_Credits::init()
 {
+
+    m_entityManager = EntityManager();
+
+    auto playerSprite = m_entityManager.addEntity("player");
+    playerSprite->addComponent<CAnimation>(m_game->assets().getAnimation("RunMan"), true);
+    playerSprite->addComponent<CTransform>(Vec2(200,384));
+    playerSprite->getComponent<CTransform>().scale = Vec2(-5.0f, 5.0f);
+
+    auto playerSprite2 = m_entityManager.addEntity("player");
+    playerSprite2->addComponent<CAnimation>(m_game->assets().getAnimation("RunWar"), true);
+    playerSprite2->addComponent<CTransform>(Vec2(520, 384));
+    playerSprite2->getComponent<CTransform>().scale = Vec2(-5.0f, 5.0f);
+
+    auto playerSprite3 = m_entityManager.addEntity("player");
+    playerSprite3->addComponent<CAnimation>(m_game->assets().getAnimation("RunRang"), true);
+    playerSprite3->addComponent<CTransform>(Vec2(840, 384));
+    playerSprite3->getComponent<CTransform>().scale = Vec2(-5.0f, 5.0f);
+
+    auto playerSprite4 = m_entityManager.addEntity("player");
+    playerSprite4->addComponent<CAnimation>(m_game->assets().getAnimation("RunWiz"), true);
+    playerSprite4->addComponent<CTransform>(Vec2(1160, 384));
+    playerSprite4->getComponent<CTransform>().scale = Vec2(-5.0f, 5.0f);
     
     registerAction(sf::Keyboard::Escape, "RETURN");
 
@@ -71,6 +93,10 @@ void Scene_Credits::init()
 void Scene_Credits::update()
 {
     m_entityManager.update();
+    for (auto e : m_entityManager.getEntities("player"))
+    {
+        e->getComponent<CAnimation>().animation.update();
+    }
 }
 
 void Scene_Credits::sDoAction(const Action& action)
@@ -92,7 +118,26 @@ void Scene_Credits::sRender()
     m_game->window().setView(m_game->window().getDefaultView());
     m_game->window().clear();
 
-    
+    // Draw all tiles
+    for (auto e : m_entityManager.getEntities())
+    {
+        auto& transform = e->getComponent<CTransform>();
+        sf::Color c = sf::Color::White;
+        if (e->hasComponent<CInvincibility>())
+        {
+            c = sf::Color(255, 255, 255, 128);
+        }
+
+        if (e->hasComponent<CAnimation>())
+        {
+            auto& animation = e->getComponent<CAnimation>().animation;
+            animation.getSprite().setRotation(transform.angle);
+            animation.getSprite().setPosition(transform.pos.x, transform.pos.y);
+            animation.getSprite().setScale(transform.scale.x, transform.scale.y);
+            animation.getSprite().setColor(c);
+            m_game->window().draw(animation.getSprite());
+        }
+    }
 
     m_menuText.setCharacterSize(25);
 
@@ -131,39 +176,6 @@ void Scene_Credits::sRender()
 
     m_scrollAmount -= 1;
 
-
-    /*
-    // draw background
-    sf::Texture background(m_game->assets().getTexture("TexBackgr2"));
-    sf::Sprite backgroundSprite(background);
-    backgroundSprite.setPosition(m_game->window().getView().getCenter().x - 640, m_game->window().getView().getCenter().y - 384);
-    m_game->window().draw(backgroundSprite);
-
-    // draw the game title in the top-left of the screen
-    m_menuText.setCharacterSize(100);
-    m_menuText.setString(m_title);
-    m_menuText.setFillColor(sf::Color(100, 100, 100));
-    m_menuText.setPosition(sf::Vector2f(500, 20));
-    m_game->window().draw(m_menuText);
-
-    m_menuText.setCharacterSize(50);
-
-    // draw all of the menu options
-    for (size_t i = 0; i < m_menuStrings.size(); i++)
-    {
-        m_menuText.setString(m_menuStrings[i]);
-        m_menuText.setFillColor(i == m_selectedMenuIndex ? sf::Color::White : sf::Color(100, 100, 100));
-        m_menuText.setPosition(sf::Vector2f(500, 300 + i * 72));
-        m_game->window().draw(m_menuText);
-    }
-
-    // draw the controls in the bottom-left
-    m_menuText.setCharacterSize(20);
-    m_menuText.setFillColor(sf::Color(100, 100, 100));
-    m_menuText.setString("up: w     down: s    play: d      back: esc");
-    m_menuText.setPosition(sf::Vector2f(10, 690));
-    m_game->window().draw(m_menuText);
-    */
 }
 
 void Scene_Credits::onEnd()

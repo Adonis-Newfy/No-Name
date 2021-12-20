@@ -50,8 +50,8 @@ void Scene_Options::init()
     m_actionStrings.push_back("OPEN_INVENTORY");
     m_actionStrings.push_back("MENU_UP");
     m_actionStrings.push_back("MENU_DOWN");
-    m_actionStrings.push_back("MENU_LEFT");
-    m_actionStrings.push_back("MENU_RIGHT");
+    m_actionStrings.push_back("MENU_NEGATIVE");
+    m_actionStrings.push_back("MENU_POSITIVE");
 
     m_keyCodes.push_back(sf::Keyboard::A);
     m_keyCodes.push_back(sf::Keyboard::D);
@@ -157,20 +157,7 @@ void Scene_Options::loadData(const std::string& filename)
         }
 
 
-        /*
-        for (int i = 0; i < m_actionStrings.size(); i++)
-        {
-            if (text == "Keybind")
-            {
-                std::string action = "";
-                int code;
-
-                fin >> action >> code;
-
-                m_keyCodes[i] = code;
-            }
-        }
-        */
+        
     }
 }
 
@@ -187,7 +174,7 @@ void Scene_Options::update()
 
 void Scene_Options::sBindKey()
 {
-    if (m_currentFrame > m_keybindFrame + 60)
+    if (m_currentFrame > m_keybindFrame + 20)
     {
         std::cout << "Begin binding Key" << std::endl;
 

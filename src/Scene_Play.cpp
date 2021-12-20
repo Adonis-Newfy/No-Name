@@ -23,9 +23,9 @@
 #include "Scene_Levels.h"
 #include "Scene_GameOver.h"
 #include "Scene_Victory.h"
+#include "Scene_Credits.h"
 
-int totalMoney = 0;
-int levelMoney = 0;
+
 
 Scene_Play::Scene_Play(GameEngine* game, const std::string& levelPath)
     : Scene(game)
@@ -69,9 +69,6 @@ void Scene_Play::init(const std::string& levelPath)
     {
         unlocked.push_back(false);
     }
-
-
-    
 
     m_inventoryStrings.push_back("Health Potion");
     m_inventoryStrings.push_back("Defense Potion");
@@ -411,7 +408,7 @@ void Scene_Play::saveData(const std::string& filename)
     auto weapons = m_player->getComponent<CWeapons>().unlocked;
 
     file << "BasicData " << weapons[0] << " " << weapons[1] << " " << weapons[2] << " " << weapons[3] << " " << float(m_player->getComponent<CHealth>().current) / float(m_player->getComponent<CHealth>().max)
-    << " " << (totalMoney + levelMoney) << std::endl;
+    << " " << (m_totalMoney + m_levelMoney) << std::endl;
 
     file << "UnlockedLevels " << unlocked[0] << " " << unlocked[1] << " " << unlocked[2] << " " << unlocked[3] << " " << unlocked[4] << std::endl;
 
@@ -522,7 +519,7 @@ void Scene_Play::loadData(const std::string& filename)
                 m_player->getComponent<CHealth>().current = (m_player->getComponent<CHealth>().max) * hp;
             }
 
-            totalMoney = money;
+            m_totalMoney = money;
         }
 
         if (text == "UnlockedLevels")
@@ -660,9 +657,14 @@ void Scene_Play::spawnWeapon(std::shared_ptr<Entity> entity)
   
 }
 
+
+// m_selectedMenuIndex = (m_selectedMenuIndex + 1) % m_menuStrings.size();
+
 void Scene_Play::sSwapWeapon()
 {
     auto& pWeapon = m_player->getComponent<CWeapons>();
+
+    int i = 1;
 
     if ((pWeapon.selected + 1) < pWeapon.unlocked.size())
         if (pWeapon.unlocked[pWeapon.selected + 1] == true)
@@ -677,7 +679,7 @@ void Scene_Play::sSwapWeapon()
 
 void Scene_Play::sTestValue()
 {
-    std::cout << levelMoney << std::endl;
+    std::cout << m_levelMoney << std::endl;
 }
 
 void Scene_Play::update()
@@ -1280,11 +1282,12 @@ void Scene_Play::sStatus()
                         for (auto b : m_entityManager.getEntities("bossarm"))
                         {
                             b->destroy();
-                            levelMoney += b->getComponent<CDamage>().damage;
+                            m_levelMoney += b->getComponent<CDamage>().damage;
                         }
+                        onCredits();
                     }
                     e->destroy();
-                    levelMoney += e->getComponent<CDamage>().damage;
+                    m_levelMoney += e->getComponent<CDamage>().damage;
                     m_game->playSound("EnemyHurt");
                 }
             }
@@ -1304,7 +1307,7 @@ void Scene_Play::sStatus()
 
         if (e->hasComponent<CBoss>())
         {
-            if ((e->getComponent<CHealth>().current <= e->getComponent<CHealth>().max / 1))
+            if ((e->getComponent<CHealth>().current <= e->getComponent<CHealth>().max / 2))
             {
                 e->getComponent<CBoss>().mechanicOccured = true;
                 e->getComponent<CBoss>().currentTimer++;
@@ -1521,7 +1524,7 @@ void Scene_Play::sCollision()
             if (Physics::GetOverlap(e, m_player).x > 0 && Physics::GetOverlap(e, m_player).y > 0 && e->hasComponent<CBoundingBox>())
             {
                 e->destroy();
-                levelMoney++;
+                m_levelMoney++;
             }
         }
     }
@@ -1983,6 +1986,12 @@ void Scene_Play::onDie()
     m_game->changeScene("DEFEAT", std::make_shared<Scene_GameOver>(m_game), true);
 }
 
+void Scene_Play::onCredits()
+{
+    saveData(m_saveData);
+    m_game->changeScene("CREDITS", std::make_shared<Scene_Credits>(m_game), true);
+}
+
 void Scene_Play::sRender()
 {
     // RENDERING DONE FOR YOU
@@ -2199,6 +2208,7 @@ void Scene_Play::sRender()
             }
         }
 
+
         // draw entity health bars
         for (auto e : m_entityManager.getEntities())
         {
@@ -2273,6 +2283,19 @@ void Scene_Play::sRender()
             }
         }
     }
+
+    // Show Coins
+
+    m_menuText.setString("Safe Coins: " + std::to_string(m_totalMoney));
+    m_menuText.setFillColor(sf::Color::White);
+    m_menuText.setOutlineColor(sf::Color::Black);
+    m_menuText.setPosition(m_game->window().getView().getCenter().x - (m_game->window().getSize().x / 2), m_game->window().getView().getCenter().y - (m_game->window().getSize().y / 2));
+    m_game->window().draw(m_menuText);
+
+    m_menuText.setString("Risked Coins: " + std::to_string(m_levelMoney));
+    m_menuText.setPosition(m_game->window().getView().getCenter().x - (m_game->window().getSize().x / 2), m_game->window().getView().getCenter().y - (m_game->window().getSize().y / 2) + 50);
+    m_game->window().draw(m_menuText);
+
 
     if (m_drawInventory)
     {
